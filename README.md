@@ -5,8 +5,10 @@
      = 다운로드 및 폰트 경로를 수정하세요
 
 3. colab, jupyter 구분 할 수 있는 변수 추가
-예)
+- 예)
+<pre>
 if is_colab:
     df = pd.read_csv(r'/content/drive/MyDrive/codeit/data/body.csv')
 else:
     df = pd.read_csv(r'data\body.csv')
+</pre>
