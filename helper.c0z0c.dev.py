@@ -244,7 +244,7 @@ pd.set_option("display.max_columns", 100)
 
 
 # by 김명환 25.07.12
-# google의 driver와 local 파일을 읽어오는 함수
+# google의 drive와 local 파일을 읽어오는 함수
 def pd_read_csv(path):
     """
     Colab/로컬 환경에 맞춰 CSV 파일을 읽어옵니다.
@@ -253,48 +253,52 @@ def pd_read_csv(path):
     -----------
     path : str
         읽어올 파일 경로
+        예: "data/test.csv"
     
     Returns:
     --------
     pandas.DataFrame : 읽어온 데이터프레임
+    
+    Examples:
+    ---------
+    >>> df = helper.pd_read_csv("data/test.csv")
+    # Jupyter: ./data/test.csv
+    # Colab: /content/drive/MyDrive/data/test.csv
     """
     import os
-    df = None
     
     if is_colab:
-        # Colab 환경에서 여러 경로 시도
-        possible_paths = [
-            f"/content/drive/MyDrive/codeit/online/{path}",
-            f"/content/drive/MyDrive/{path}",
-            f"/content/{path}",
-            f"{path}"
-        ]
-        
-        for try_path in possible_paths:
-            try:
-                if os.path.exists(try_path):
-                    df = pd.read_csv(try_path)
-                    print(f"✅ 파일 읽기 성공: {try_path}")
-                    break
-            except Exception as e:
-                continue
-        
-        if df is None:
-            print(f"❌ 파일을 찾을 수 없습니다: {path}")
-            print("🔍 시도한 경로들:")
-            for try_path in possible_paths:
-                print(f"  - {try_path}")
-            print("💡 Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
+        # Colab 환경: Google Drive 경로 사용
+        full_path = f"/content/drive/MyDrive/{path}"
+        print(f"🔍 Colab 환경 - 파일 경로: {full_path}")
     else:
-        # 로컬 환경
-        try:
-            df = pd.read_csv(path)
-            print(f"✅ 파일 읽기 성공: {path}")
-        except Exception as e:
-            print(f"❌ 파일 읽기 실패: {str(e)}")
-            print(f"🔍 확인할 경로: {path}")
+        # Jupyter 로컬 환경: 현재 디렉토리 기준
+        full_path = path
+        print(f"🔍 로컬 환경 - 파일 경로: {full_path}")
     
-    return df
+    try:
+        # 파일 존재 여부 확인
+        if not os.path.exists(full_path):
+            print(f"❌ 파일을 찾을 수 없습니다: {full_path}")
+            if is_colab:
+                print("💡 Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
+                print("   Google Drive 경로: /content/drive/MyDrive/")
+            else:
+                print("💡 현재 디렉토리 기준으로 파일 경로를 확인하세요.")
+            return None
+        
+        # CSV 파일 읽기
+        df = pd.read_csv(full_path)
+        file_size = os.path.getsize(full_path)
+        print(f"✅ 파일 읽기 성공: {full_path}")
+        print(f"� 데이터 크기: {df.shape[0]}행 × {df.shape[1]}열 ({file_size:,} bytes)")
+        
+        return df
+        
+    except Exception as e:
+        print(f"❌ 파일 읽기 실패: {str(e)}")
+        print(f"🔍 확인할 경로: {full_path}")
+        return None
 
 
 # by 김명환 25.07.12
