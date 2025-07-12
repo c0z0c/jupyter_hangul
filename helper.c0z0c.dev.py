@@ -1,17 +1,33 @@
 """
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
-사용법:
+🚀 기본 사용법:
     import helper.c0z0c.dev as helper
-    helper.setup()  # 폰트 다운로드 + 로딩 + pandas 확장 한번에 설정
-    
-    # 또는 개별 실행
-    helper.font_download()
-    helper.load_font()
-    helper.set_pandas_extension()
+    helper.setup()  # 한번에 모든 설정 완료
+
+🔧 개별 실행:
+    helper.font_download()      # 폰트 다운로드
+    helper.load_font()          # 폰트 로딩
+    helper.set_pandas_extension()  # pandas 확장 기능
+
+🆘 문제 해결:
+    helper.reset_colab_fonts()  # Colab 폰트 완전 리셋
+    helper.check_font_status()  # 폰트 상태 확인
+
+📁 파일 읽기:
+    df = helper.pd_read_csv("파일명.csv")  # Colab/로컬 자동 감지
+
+🔍 유틸리티:
+    helper.dir_start(객체, "접두사")  # 메서드 검색
+    df.head_att()  # 한글 컬럼 설명 출력
+
+💡 Colab 사용 시 주의사항:
+    - 세션 재시작 후 Google Drive 인증 오류 발생 시 helper.reset_colab_fonts() 실행
+    - 문제가 지속되면 런타임 재시작 후 helper.setup() 다시 실행
 
 작성자: 김명환
 날짜: 2025.07.12
+버전: 2.1 (Google Drive 인증 오류 해결 + 폰트 리셋 기능 추가)
 """
 
 # step1 폰트 다운로드
@@ -81,11 +97,20 @@ def load_font():
     # matplotlib 라이브 러리 자동 로딩
     try:
         if in_colab():
-            print("from google.colab import drive")
-            from google.colab import drive
+            print("🔍 Colab 환경에서 폰트 설정 중...")
             is_colab = True
-            print('drive.mount("/content/drive")')
-            drive.mount("/content/drive")
+            
+            # Google Drive 마운트 시도 (선택적)
+            try:
+                print("📁 Google Drive 연결 시도 중...")
+                from google.colab import drive
+                drive.mount("/content/drive", force_remount=True)
+                print("✅ Google Drive 연결 성공")
+            except Exception as drive_error:
+                print(f"⚠️  Google Drive 연결 실패: {str(drive_error)}")
+                print("📍 Google Drive 없이 계속 진행합니다...")
+            
+            # 폰트 설정
             plt.rc("font", family="NanumBarunGothic")
             md = """
 **💻 실행 환경**: Colab
@@ -121,6 +146,89 @@ font_path={font_path}
 """
         display(Markdown(md))   
         # 폰트를 삭제 하고 다시 설치 하자
+        print("🔄 폰트 관련 오류 발생 - 재설치를 시도합니다...")
+        
+        # Colab에서 Google Drive 인증 오류 해결
+        def in_colab():
+            try:
+                import google.colab
+                return True
+            except ImportError:
+                return False
+        
+        if in_colab():
+            print("📋 Colab 환경에서 폰트 재설치를 진행합니다...")
+            try:
+                import subprocess
+                import os
+                from IPython.display import display, Markdown
+                
+                # 1. 기존 폰트 패키지 완전 제거
+                print("🗑️  기존 fonts-nanum 패키지 제거 중...")
+                subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-nanum'], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # 2. 폰트 캐시 완전 정리
+                print("🧹 폰트 캐시 완전 정리 중...")
+                subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(['rm', '-rf', os.path.expanduser('~/.fontconfig')], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # 3. 패키지 목록 업데이트
+                print("📦 패키지 목록 업데이트 중...")
+                subprocess.run(['sudo', 'apt-get', 'update', '-qq'], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # 4. 폰트 재설치
+                print("📥 fonts-nanum 재설치 중...")
+                subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # 5. 폰트 캐시 재구성
+                print("🔧 폰트 캐시 재구성 중...")
+                subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # 사용자에게 재시도 안내
+                restart_guide = """
+# 🔄 폰트 재설치 완료
+
+## 📌 다음 단계
+폰트 재설치가 완료되었습니다. **프로세서를 재시작**하고 다시 시도하세요.
+
+## 🚀 재시작 방법
+1. **메뉴 > 런타임 > 런타임 다시 시작** 클릭
+2. 재시작 후 **helper.setup()** 다시 실행
+
+## 💡 참고사항
+- Google Drive 인증 오류가 해결되었습니다
+- 재시작 후에는 Google Drive 마운트가 다시 필요할 수 있습니다
+- 폰트 설정이 정상적으로 작동할 것입니다
+
+## ⚠️ 문제가 지속되면
+새로운 노트북을 만들어 다시 시도하세요.
+"""
+                
+                display(Markdown(restart_guide))
+                
+                print("🔄 3초 후 프로세서를 재시작합니다...")
+                print("재시작 후 다시 helper.setup()을 실행하세요!")
+                
+                # 잠시 대기 후 재시작
+                import time
+                time.sleep(3)
+                os.kill(os.getpid(), 9)
+                
+            except Exception as reinstall_error:
+                print(f"❌ 재설치 중 오류 발생: {str(reinstall_error)}")
+                print("🔄 수동으로 런타임을 재시작하고 다시 시도하세요.")
+                print("메뉴 > 런타임 > 런타임 다시 시작")
+        else:
+            print("💻 로컬 환경에서는 폰트 파일을 다시 다운로드하세요.")
+            print("helper.font_download()를 다시 실행해보세요.")
 
 
 # load_font()
@@ -138,11 +246,54 @@ pd.set_option("display.max_columns", 100)
 # by 김명환 25.07.12
 # google의 driver와 local 파일을 읽어오는 함수
 def pd_read_csv(path):
+    """
+    Colab/로컬 환경에 맞춰 CSV 파일을 읽어옵니다.
+    
+    Parameters:
+    -----------
+    path : str
+        읽어올 파일 경로
+    
+    Returns:
+    --------
+    pandas.DataFrame : 읽어온 데이터프레임
+    """
+    import os
     df = None
+    
     if is_colab:
-        df = pd.read_csv(f"/content/drive/MyDrive/codeit/online/{path}")
+        # Colab 환경에서 여러 경로 시도
+        possible_paths = [
+            f"/content/drive/MyDrive/codeit/online/{path}",
+            f"/content/drive/MyDrive/{path}",
+            f"/content/{path}",
+            f"{path}"
+        ]
+        
+        for try_path in possible_paths:
+            try:
+                if os.path.exists(try_path):
+                    df = pd.read_csv(try_path)
+                    print(f"✅ 파일 읽기 성공: {try_path}")
+                    break
+            except Exception as e:
+                continue
+        
+        if df is None:
+            print(f"❌ 파일을 찾을 수 없습니다: {path}")
+            print("🔍 시도한 경로들:")
+            for try_path in possible_paths:
+                print(f"  - {try_path}")
+            print("💡 Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
     else:
-        df = pd.read_csv(f"{path}")
+        # 로컬 환경
+        try:
+            df = pd.read_csv(path)
+            print(f"✅ 파일 읽기 성공: {path}")
+        except Exception as e:
+            print(f"❌ 파일 읽기 실패: {str(e)}")
+            print(f"🔍 확인할 경로: {path}")
+    
     return df
 
 
@@ -391,3 +542,128 @@ def series_head_att(self, rows=5):
 # 모듈 직접 실행시 setup 함수 호출
 if __name__ == "__main__":
     setup()
+
+# 사용자 편의 함수들
+def reset_colab_fonts():
+    """
+    Colab에서 폰트 관련 문제가 발생했을 때 완전히 리셋하는 함수
+    """
+    def in_colab():
+        try:
+            import google.colab
+            return True
+        except ImportError:
+            return False
+    
+    if not in_colab():
+        print("❌ 이 함수는 Colab 전용입니다.")
+        return
+    
+    print("🔄 Colab 폰트 완전 리셋을 시작합니다...")
+    
+    try:
+        import subprocess
+        import os
+        from IPython.display import display, Markdown
+        
+        # 1. 모든 폰트 패키지 제거
+        print("🗑️  모든 폰트 패키지 제거 중...")
+        subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-*'], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 2. 캐시 완전 정리
+        print("🧹 모든 캐시 정리 중...")
+        subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(['rm', '-rf', os.path.expanduser('~/.fontconfig')], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 3. 패키지 목록 업데이트
+        print("📦 패키지 목록 업데이트 중...")
+        subprocess.run(['sudo', 'apt-get', 'update', '-qq'], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 4. 필수 폰트 재설치
+        print("📥 필수 폰트 재설치 중...")
+        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', 'fonts-nanum-coding'], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 5. 캐시 재구성
+        print("🔧 폰트 캐시 재구성 중...")
+        subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("✅ 폰트 리셋 완료!")
+        print("🔄 런타임을 재시작하고 helper.setup()을 다시 실행하세요.")
+        
+        # 재시작 안내
+        reset_guide = """
+# 🔄 폰트 리셋 완료
+
+## 📌 다음 단계
+1. **메뉴 > 런타임 > 런타임 다시 시작** 클릭
+2. 재시작 후 **helper.setup()** 실행
+
+## 💡 이제 정상적으로 작동할 것입니다!
+"""
+        display(Markdown(reset_guide))
+        
+    except Exception as e:
+        print(f"❌ 리셋 중 오류 발생: {str(e)}")
+        print("🔄 수동으로 런타임을 재시작하고 다시 시도하세요.")
+
+def check_font_status():
+    """
+    현재 폰트 설정 상태를 확인하는 함수
+    """
+    print("🔍 폰트 설정 상태 확인 중...")
+    
+    def in_colab():
+        try:
+            import google.colab
+            return True
+        except ImportError:
+            return False
+    
+    import matplotlib.pyplot as plt
+    import matplotlib.font_manager as fm
+    
+    print(f"💻 실행 환경: {'Colab' if in_colab() else '로컬'}")
+    print(f"📝 현재 폰트 패밀리: {plt.rcParams['font.family']}")
+    
+    # 사용 가능한 한글 폰트 목록
+    fonts = [f.name for f in fm.fontManager.ttflist]
+    korean_fonts = [f for f in fonts if any(keyword in f for keyword in ['Nanum', 'Gothic', 'Malgun', 'Dotum', 'Batang'])]
+    
+    if korean_fonts:
+        print("✅ 사용 가능한 한글 폰트:")
+        for font in korean_fonts:
+            print(f"  - {font}")
+    else:
+        print("❌ 한글 폰트를 찾을 수 없습니다.")
+    
+    # Colab에서 폰트 패키지 확인
+    if in_colab():
+        import os
+        fonts_installed = os.system("dpkg -l | grep fonts-nanum") == 0
+        print(f"📦 fonts-nanum 패키지: {'✅ 설치됨' if fonts_installed else '❌ 미설치'}")
+    
+    # 간단한 테스트
+    try:
+        import matplotlib.pyplot as plt
+        import numpy as np
+        
+        fig, ax = plt.subplots(figsize=(6, 4))
+        ax.text(0.5, 0.5, '한글 폰트 테스트', ha='center', va='center', fontsize=16)
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.set_title('폰트 테스트')
+        plt.tight_layout()
+        plt.show()
+        
+        print("🎨 폰트 테스트 완료!")
+        
+    except Exception as e:
+        print(f"❌ 폰트 테스트 실패: {str(e)}")
