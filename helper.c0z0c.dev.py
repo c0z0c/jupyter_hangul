@@ -81,9 +81,10 @@ def load_font():
     # matplotlib 라이브 러리 자동 로딩
     try:
         if in_colab():
+            print("from google.colab import drive")
             from google.colab import drive
-
             is_colab = True
+            print('drive.mount("/content/drive")')
             drive.mount("/content/drive")
             plt.rc("font", family="NanumBarunGothic")
             md = """
