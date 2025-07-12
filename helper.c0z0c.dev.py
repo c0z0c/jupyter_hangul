@@ -1,17 +1,37 @@
 """
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
-사용법:
-    import helper.c0z0c.dev as helper
-    helper.setup()  # 폰트 다운로드 + 로딩 + pandas 확장 한번에 설정
+🚀 Colab 간단 사용법:
+    1. 첫 번째 실행 (폰트 설치 후 자동 재시작):
+       import urllib.request, importlib.util, sys
+       urllib.request.urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper.c0z0c.dev.py", "helper.c0z0c.dev.py")
+       spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
+       helper = importlib.util.module_from_spec(spec)
+       sys.modules["helper"] = helper
+       spec.loader.exec_module(helper)
+       helper.setup()
     
-    # 또는 개별 실행
-    helper.font_download()
-    helper.load_font()
-    helper.set_pandas_extension()
+    2. 재시작 후 실행:
+       exec(open('auto_restart_setup.py').read())
+    
+💻 로컬 사용법:
+    import helper.c0z0c.dev as helper
+    helper.setup()  # 한번에 모든 설정 완료
+
+🔧 개별 실행:
+    helper.font_download()      # 폰트 다운로드
+    helper.load_font()          # 폰트 로딩
+    helper.set_pandas_extension()  # pandas 확장 기능
+
+📚 추가 함수:
+    helper.quick_setup()              # 간단한 사용법
+    helper.colab_setup_with_restart() # 단계별 설정
+    helper.pd_read_csv(path)         # Colab/로컬 파일 읽기
+    df.head_att()                    # 한글 컬럼 설명 출력
 
 작성자: 김명환
 날짜: 2025.07.12
+버전: 2.0 (프로세서 재시작 방식 + 사용자 안내 개선)
 """
 
 # step1 폰트 다운로드
@@ -29,17 +49,93 @@ def font_download():
         except ImportError:
             return False
     if in_colab():
+        # Colab에서 fonts-nanum 설치 여부 확인
         if os.system("dpkg -l | grep fonts-nanum") == 0:
-            print("fonts-nanum이 이미 설치되어 있습니다.")
+            print("✅ fonts-nanum이 이미 설치되어 있습니다.")
             return
-        print("📥 install fonts-nanum")
+        
+        print("📥 Colab에서 fonts-nanum 설치 중...")
+        
+        # 폰트 설치 및 프로세서 재시작
         import subprocess
+        from IPython.display import display, Markdown
+        
+        # 재시작 전 사용자 안내 메시지 표시
+        restart_guide = """
+# 🔄 폰트 설치 완료 후 프로세서 재시작 안내
+
+## 📌 중요한 안내사항
+- **폰트 설치가 완료되면 프로세서가 자동으로 재시작됩니다**
+- 재시작 후 **모든 변수와 import가 초기화됩니다**
+
+## 🚀 재시작 후 실행할 코드
+재시작이 완료되면 **새로운 셀에서** 아래 코드를 실행하세요:
+
+```python
+# 재시작 후 실행할 코드
+import importlib.util
+import sys
+
+# 모듈 다시 로드
+spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
+helper = importlib.util.module_from_spec(spec)
+sys.modules["helper"] = helper
+spec.loader.exec_module(helper)
+
+# 한글 폰트 설정 완료
+helper.setup()
+```
+
+## ⏰ 잠시 후 자동으로 재시작됩니다...
+폰트 설치가 진행되는 동안 잠시만 기다려주세요.
+"""
+        
+        display(Markdown(restart_guide))
+        
+        # 폰트 설치 진행
+        print("📦 패키지 업데이트 중...")
+        subprocess.run(['sudo', 'apt-get', 'update', '-qq'], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("📥 fonts-nanum 설치 중...")
         subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("🔧 폰트 캐시 갱신 중...")
         subprocess.run(['sudo', 'fc-cache', '-fv'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        print("🧹 matplotlib 캐시 정리 중...")
         subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # 재시작 후 실행할 코드를 파일로 저장
+        restart_code = """
+# 자동 재시작 후 실행되는 코드
+import importlib.util
+import sys
+
+# 모듈 로드
+spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
+helper = importlib.util.module_from_spec(spec)
+sys.modules["helper"] = helper
+spec.loader.exec_module(helper)
+
+# 설정 완료
+print("🔄 재시작 후 자동 실행 중...")
+helper.setup()
+"""
+        
+        with open('auto_restart_setup.py', 'w', encoding='utf-8') as f:
+            f.write(restart_code)
+        
+        print("💾 재시작 후 자동 실행 파일 저장 완료")
+        print("🔄 3초 후 프로세서를 재시작합니다...")
+        
+        # 잠시 대기 후 재시작
+        import time
+        time.sleep(3)
+        
         os.kill(os.getpid(), 9)
     else:
         # 1. 다운로드 경로 설정
@@ -183,8 +279,65 @@ def setup():
     - 폰트 다운로드
     - 폰트 로딩
     - pandas 확장 기능 설정
+    
+    Colab에서는 첫 실행 시 폰트 설치 후 자동으로 재시작됩니다.
     """
     print("🚀 Jupyter/Colab 한글 환경 설정을 시작합니다...")
+    
+    # Colab 환경 감지
+    def in_colab():
+        try:
+            import google.colab
+            return True
+        except ImportError:
+            return False
+    
+    # Colab에서 폰트 설치 상태 확인
+    if in_colab():
+        import os
+        fonts_installed = os.system("dpkg -l | grep fonts-nanum") == 0
+        
+        if not fonts_installed:
+            from IPython.display import display, Markdown
+            
+            # 재시작 안내 메시지
+            setup_guide = """
+# 🎯 Colab 한글 폰트 설정 가이드
+
+## 📋 진행 상황
+1. **현재 단계**: 폰트 설치 및 재시작 준비 중
+2. **다음 단계**: 재시작 후 설정 완료
+
+## 🔄 재시작 후 실행 방법
+재시작이 완료되면 **반드시** 아래 코드를 실행하세요:
+
+```python
+# 방법 1: 자동 실행 파일 사용 (권장)
+exec(open('auto_restart_setup.py').read())
+
+# 방법 2: 직접 실행
+import importlib.util
+import sys
+spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
+helper = importlib.util.module_from_spec(spec)
+sys.modules["helper"] = helper
+spec.loader.exec_module(helper)
+helper.setup()
+```
+
+## ⚠️ 주의사항
+- 재시작 후 모든 변수가 초기화됩니다
+- 위 코드를 **새로운 셀**에서 실행하세요
+- `auto_restart_setup.py` 파일이 자동으로 생성됩니다
+
+## 🚀 잠시 후 자동으로 재시작됩니다...
+"""
+            
+            display(Markdown(setup_guide))
+            
+            # 폰트 다운로드 실행 (재시작 포함)
+            font_download()
+            return  # 여기서 재시작되므로 함수 종료
     
     try:
         # 1. 폰트 다운로드
@@ -205,6 +358,36 @@ def setup():
         
     except Exception as e:
         print(f"❌ 설정 중 오류가 발생했습니다: {str(e)}")
+        if in_colab():
+            from IPython.display import display, Markdown
+            
+            error_guide = """
+# ❌ 설정 중 오류 발생
+
+## 🔧 해결 방법
+1. **런타임 재시작**: 메뉴 > 런타임 > 런타임 다시 시작
+2. **다시 실행**: 재시작 후 `helper.setup()` 다시 실행
+3. **수동 실행**: 아래 코드를 순서대로 실행
+
+```python
+# 수동 설정 코드
+import importlib.util
+import sys
+spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
+helper = importlib.util.module_from_spec(spec)
+sys.modules["helper"] = helper
+spec.loader.exec_module(helper)
+helper.setup()
+```
+
+## 📞 문제가 지속되면
+- 런타임 유형을 확인하세요 (GPU/TPU 사용 시 차이가 있을 수 있음)
+- 새로운 노트북에서 다시 시도해보세요
+"""
+            
+            display(Markdown(error_guide))
+            print("🔄 런타임 재시작을 권장합니다.")
+            print("메뉴 > 런타임 > 런타임 다시 시작을 클릭하세요.")
 
 # by 김명환 25.07.12
 # DataFrame / Series 출력시 한글 컬럼 설명 기능 추가
@@ -381,6 +564,103 @@ def series_head_att(self, rows=5):
     
     return HTML(df.head(rows).to_html(escape=False))
 
+# 간단한 사용법을 위한 추가 함수
+def quick_setup():
+    """
+    가장 간단한 한번 실행 함수입니다.
+    
+    Colab에서는 두 번 실행이 필요합니다:
+    1. 첫 번째 실행: 폰트 설치 후 자동 재시작
+    2. 두 번째 실행: 재시작 후 설정 완료
+    """
+    def in_colab():
+        try:
+            import google.colab
+            return True
+        except ImportError:
+            return False
+    
+    if in_colab():
+        import os
+        fonts_installed = os.system("dpkg -l | grep fonts-nanum") == 0
+        
+        if not fonts_installed:
+            print("🔄 [1/2] 첫 번째 실행: 폰트 설치 중...")
+            setup()
+        else:
+            print("🎯 [2/2] 두 번째 실행: 설정 완료 중...")
+            setup()
+    else:
+        print("💻 로컬 환경에서 설정 중...")
+        setup()
+
 # 모듈 직접 실행시 setup 함수 호출
 if __name__ == "__main__":
     setup()
+
+# Colab 전용 함수들
+def restart_colab_runtime():
+    """
+    Colab에서 런타임을 안전하게 재시작합니다.
+    """
+    try:
+        import google.colab
+        from google.colab import runtime
+        print("🔄 Colab 런타임을 재시작합니다...")
+        runtime.restart()
+    except ImportError:
+        print("❌ Colab 환경이 아닙니다.")
+    except Exception as e:
+        print(f"❌ 런타임 재시작 실패: {str(e)}")
+
+def colab_setup_with_restart():
+    """
+    Colab에서 폰트 설치 후 자동으로 재시작하고 설정을 완료합니다.
+    """
+    def in_colab():
+        try:
+            import google.colab
+            return True
+        except ImportError:
+            return False
+    
+    if not in_colab():
+        print("❌ 이 함수는 Colab 전용입니다.")
+        print("일반 환경에서는 helper.setup()을 사용하세요.")
+        return
+    
+    import os
+    fonts_installed = os.system("dpkg -l | grep fonts-nanum") == 0
+    
+    if not fonts_installed:
+        print("🔄 Phase 1: 폰트 설치 및 런타임 재시작")
+        
+        # 재시작 후 실행할 코드 저장
+        restart_code = """
+# Phase 2: 재시작 후 자동 실행
+import importlib.util
+import sys
+
+# 모듈 다시 로드
+spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
+helper = importlib.util.module_from_spec(spec)
+sys.modules["helper"] = helper
+spec.loader.exec_module(helper)
+
+print("🔄 Phase 2: 재시작 후 설정 완료")
+helper.setup()
+"""
+        
+        with open('colab_restart_phase2.py', 'w', encoding='utf-8') as f:
+            f.write(restart_code)
+        
+        # 폰트 설치
+        font_download()
+        
+        print("✅ Phase 1 완료!")
+        print("다음 코드를 실행하여 Phase 2를 시작하세요:")
+        print("exec(open('colab_restart_phase2.py').read())")
+        
+    else:
+        print("✅ 폰트가 이미 설치되어 있습니다.")
+        setup()
