@@ -21,8 +21,17 @@ plt.title("한글 제목")  # 바로 사용 가능
 # 컬럼 설명 설정
 df.set_head_att({"id": "아이디", "name": "이름"})
 
-# 한글 설명 포함 출력
-df.head_att()  # 또는 df.head_att(10)
+# 한글 설명 포함 출력 (다양한 형식 지원)
+df.head_att()              # 기본 print 형식
+df.head_att(out='html')    # HTML 형식 (예쁘게 표시)
+df.head_att(out='str')     # 문자열 반환
+```
+
+### 문제 해결 기능
+```python
+# Colab에서 폰트 문제 발생 시
+helper.reset_colab_fonts()    # 폰트 완전 리셋
+helper.check_font_status()    # 현재 폰트 상태 확인
 ```
 
 ### 편의 함수
@@ -41,6 +50,10 @@ helper.dir_start(pd.DataFrame, 'head')
 helper.font_download()        # 폰트 다운로드만
 helper.load_font()           # 폰트 로딩만
 helper.set_pandas_extension() # pandas 확장만
+
+# 문제 해결 함수들
+helper.reset_colab_fonts()   # 폰트 완전 리셋 (Colab)
+helper.check_font_status()   # 폰트 상태 확인
 ```
 
 ## 🎨 컬럼 설명 관리
@@ -63,15 +76,38 @@ df.clear_head_att()         # 모든 컬럼
 ## 📊 출력 옵션
 
 ```python
-df.head_att()      # 기본 5행
-df.head_att(10)    # 10행
-df.head_att("all") # 모든 행
-df.head_att(0)     # 헤더만
+# DataFrame 출력 옵션
+df.head_att()              # 기본 5행, print 형식
+df.head_att(10)            # 10행
+df.head_att("all")         # 모든 행
+df.head_att(0)             # 헤더만
+
+# 출력 형식 옵션
+df.head_att(out='print')   # 콘솔 출력 (기본값)
+df.head_att(out='html')    # HTML 형식 (예쁘게 표시)
+df.head_att(out='str')     # 문자열 반환
+
+# Series도 동일하게 지원
+series.head_att()
+series.head_att(out='html')
 ```
 
 ## 💡 팁
 
 - `setup()` 한 번만 실행하면 모든 설정 완료
 - Colab에서는 런타임 재시작 후 다시 실행 필요
-- 한글 컬럼 설명은 HTML 형태로 예쁘게 출력됨
+- 한글 컬럼 설명은 HTML 형태로 예쁘게 출력 가능 (`out='html'`)
+- Series 객체도 DataFrame과 동일한 기능 지원
+- Google Drive 인증 오류 시 `helper.reset_colab_fonts()` 사용
 - 기존 pandas 기능은 그대로 유지
+
+## 🆘 문제 해결
+
+```python
+# Colab에서 폰트가 안 보일 때
+helper.check_font_status()     # 상태 확인
+helper.reset_colab_fonts()     # 완전 리셋 (재시작됨)
+
+# 재시작 후
+helper.setup()                 # 다시 설정
+```

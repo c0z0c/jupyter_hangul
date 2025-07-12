@@ -320,10 +320,11 @@ def set_pandas_extension():
     pd.set_option("display.max_rows", 100)
     pd.set_option("display.max_columns", 100)
     
-    # 이미 설정되어 있는지 확인
-    if hasattr(pd.DataFrame, 'head_att'):
-        print("📊 pandas 확장 기능이 이미 설정되어 있습니다.")
-        return
+    # 속도 얼마 안걸린다 무조거 다시 읽자
+    # # 이미 설정되어 있는지 확인
+    # if hasattr(pd.DataFrame, 'head_att'):
+    #     print("📊 pandas 확장 기능이 이미 설정되어 있습니다.")
+    #     return
     
     # 메서드들을 pandas DataFrame/Series에 추가
     setattr(pd.DataFrame, "set_head_att", set_head_att)
@@ -463,77 +464,169 @@ setattr(pd.Series, "clear_head_att", clear_head_att)
 def pd_head_att(self, rows=5, out=None):
     """
     한글 컬럼 설명이 포함된 DataFrame을 다양한 형태로 출력합니다.
-    
-    Parameters:
-    -----------
-    rows : int or str, default 5
-        - int: 출력할 행 수
-        - "all" or -1: 모든 행 출력
-        - 0: 헤더만 출력
-    out : str, optional
-        - 'html' or None: HTML 형식으로 출력 (기본값)
-        - 'print': print 문으로 출력
-        - 'str' or 'string': 문자열로 반환
-        
-    Returns:
-    --------
-    IPython.display.HTML or str or None : 출력 방식에 따라 다름
-    
-    Examples:
-    ---------
-    >>> df.set_head_att({"id": "ID", "name": "이름"})
-    >>> df.head_att(10)  # HTML 출력 (기본)
-    >>> df.head_att(10, out='print')  # print 출력
-    >>> result = df.head_att(10, out='str')  # 문자열 반환
     """
     
     labels = self.attrs.get("column_descriptions", {})
     
-    # 헤더 생성 (한글 설명이 있으면 추가)
-    header = []
-    for col in self.columns:
-        if col in labels and labels[col]:
-            header.append(f"{col}<br><small>({labels[col]})</small>")
-        else:
-            header.append(col)
-    
-    # 데이터 복사 및 컬럼명 변경
-    df_copy = self.copy()
-    df_copy.columns = header
-    
     # 출력할 데이터 결정
     if isinstance(rows, str) and rows.lower() == "all":
-        df_display = df_copy
+        df_display = self
     elif isinstance(rows, int):
         if rows == -1:
-            df_display = df_copy
+            df_display = self
         elif rows == 0:
-            df_display = df_copy.iloc[0:0]  # 헤더만
+            df_display = self.iloc[0:0]
         else:
-            df_display = df_copy.head(rows)
+            df_display = self.head(rows)
     else:
-        df_display = df_copy.head(5)
+        df_display = self.head(5)
     
-    # 출력 방식 결정
-    if out is None or out.lower() == 'html':
-        # HTML 출력 (기본)
-        from IPython.display import HTML
-        return HTML(df_display.to_html(escape=False))
-    
-    elif out.lower() == 'print':
-        # print 출력 (HTML 태그 제거)
-        df_print = df_display.copy()
-        # HTML 태그 제거
-        df_print.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_print.columns]
-        print(df_print.to_string())
+    # 출력 방식 결정 (기본값: print)
+    if out is None or out.lower() == 'print':
+        def get_display_width(text):
+            if text is None:
+                return 0
+            width = 0
+            for char in str(text):
+                if ord(char) > 127:
+                    width += 2
+                else:
+                    width += 1
+            return width
+        
+        def pad_text(text, width):
+            text_str = str(text)
+            text_width = get_display_width(text_str)
+            padding = width - text_width
+            return ' ' * padding + text_str
+        
+        # 컬럼 정보 준비
+        columns_info = []
+        for col in df_display.columns:
+            korean_name = labels.get(col, col)
+            english_name = col
+            
+            data_widths = []
+            for val in df_display[col]:
+                data_widths.append(get_display_width(str(val)))
+            max_data_width = max(data_widths) if data_widths else 0
+            
+            index_width = max(get_display_width(str(idx)) for idx in df_display.index) if not df_display.empty else 0
+            
+            max_width = max(
+                get_display_width(korean_name),
+                get_display_width(english_name),
+                max_data_width,
+                index_width
+            )
+            
+            columns_info.append({
+                'korean': korean_name,
+                'english': english_name,
+                'width': max_width + 2
+            })
+        
+        # 한글 헤더 출력
+        korean_parts = []
+        for info in columns_info:
+            korean_parts.append(pad_text(info['korean'], info['width']))
+        print(''.join(korean_parts))
+        
+        # 영문 헤더 출력
+        english_parts = []
+        for info in columns_info:
+            english_parts.append(pad_text(info['english'], info['width']))
+        print(''.join(english_parts))
+        
+        # 데이터 출력
+        for idx, row in df_display.iterrows():
+            row_parts = []
+            first_val = str(row.iloc[0])
+            first_text = str(idx) + first_val
+            row_parts.append(pad_text(first_text, columns_info[0]['width']))
+            
+            for i, val in enumerate(row.iloc[1:], 1):
+                row_parts.append(pad_text(str(val), columns_info[i]['width']))
+            
+            print(''.join(row_parts))
+        
         return None
     
+    elif out.lower() == 'html':
+        header = []
+        for col in df_display.columns:
+            if col in labels and labels[col]:
+                header.append(f"{col}<br><small>({labels[col]})</small>")
+            else:
+                header.append(col)
+        
+        df_copy = df_display.copy()
+        df_copy.columns = header
+        
+        from IPython.display import HTML
+        return HTML(df_copy.to_html(escape=False))
+    
     elif out.lower() in ['str', 'string']:
-        # 문자열 반환 (HTML 태그 제거)
-        df_str = df_display.copy()
-        # HTML 태그 제거
-        df_str.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_str.columns]
-        return df_str.to_string()
+        def get_char_width(char):
+            return 2 if ord(char) >= 0x1100 else 1
+        
+        def get_text_width(text):
+            return sum(get_char_width(char) for char in str(text))
+        
+        def align_text(text, width):
+            text_str = str(text)
+            current_width = get_text_width(text_str)
+            padding = max(0, width - current_width)
+            return ' ' * padding + text_str
+        
+        column_widths = []
+        
+        for i, col in enumerate(df_display.columns):
+            korean_name = labels.get(col, col)
+            english_name = col
+            
+            max_data_width = max(get_text_width(str(val)) for val in df_display[col])
+            
+            if i == 0:
+                max_index_width = max(get_text_width(str(idx)) for idx in df_display.index)
+                max_data_width = max(max_data_width, max_index_width)
+            
+            max_width = max(
+                get_text_width(korean_name),
+                get_text_width(english_name),
+                max_data_width
+            )
+            
+            column_widths.append(max_width + 2)
+        
+        result = ""
+        
+        # 한글 헤더 생성
+        korean_row = ""
+        for i, col in enumerate(df_display.columns):
+            korean_name = labels.get(col, col)
+            korean_row += align_text(korean_name, column_widths[i])
+        result += korean_row + "\n"
+        
+        # 영문 헤더 생성
+        english_row = ""
+        for i, col in enumerate(df_display.columns):
+            english_row += align_text(col, column_widths[i])
+        result += english_row + "\n"
+        
+        # 데이터 생성
+        for idx, row in df_display.iterrows():
+            data_row = ""
+            for i, val in enumerate(row):
+                if i == 0:
+                    text = str(idx)
+                    data_row += align_text(text, column_widths[i] - get_text_width(str(val)))
+                    data_row += str(val)
+                else:
+                    data_row += align_text(str(val), column_widths[i])
+            result += data_row + "\n"
+        
+        return result.rstrip()
     
     else:
         raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
@@ -544,188 +637,147 @@ def series_head_att(self, rows=5, out=None):
     
     Parameters:
     -----------
-    rows : int, default 5
-        출력할 행 수
+    rows : int or str, default 5
+        - int: 출력할 행 수
+        - "all" or -1: 모든 행 출력
+        - 0: 헤더만 출력
     out : str, optional
-        - 'html' or None: HTML 형식으로 출력 (기본값)
-        - 'print': print 문으로 출력
+        - None or 'print': print 문으로 출력 (기본값)
+        - 'html': HTML 형식으로 출력
         - 'str' or 'string': 문자열로 반환
         
     Returns:
     --------
     IPython.display.HTML or str or None : 출력 방식에 따라 다름
-    
-    Examples:
-    ---------
-    >>> s.set_head_att({"value": "값"})
-    >>> s.head_att(10)  # HTML 출력 (기본)
-    >>> s.head_att(10, out='print')  # print 출력
-    >>> result = s.head_att(10, out='str')  # 문자열 반환
     """
     
-    df = self.to_frame()
     labels = self.attrs.get("column_descriptions", {})
     
-    if labels:
-        col_name = df.columns[0]
-        if col_name in labels and labels[col_name]:
-            header = f"{col_name}<br><small>({labels[col_name]})</small>"
-            df.columns = [header]
+    # 출력할 데이터 결정
+    if isinstance(rows, str) and rows.lower() == "all":
+        series_display = self
+    elif isinstance(rows, int):
+        if rows == -1:
+            series_display = self
+        elif rows == 0:
+            series_display = self.iloc[0:0]  # 헤더만
+        else:
+            series_display = self.head(rows)
+    else:
+        series_display = self.head(5)
     
-    df_display = df.head(rows)
+    # Series 이름 (컬럼명)
+    series_name = self.name if self.name is not None else "Series"
+    korean_name = labels.get(series_name, series_name)
     
-    # 출력 방식 결정
-    if out is None or out.lower() == 'html':
-        # HTML 출력 (기본)
-        from IPython.display import HTML
-        return HTML(df_display.to_html(escape=False))
-    
-    elif out.lower() == 'print':
-        # print 출력 (HTML 태그 제거)
-        df_print = df_display.copy()
-        # HTML 태그 제거
-        df_print.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_print.columns]
-        print(df_print.to_string())
+    # 출력 방식 결정 (기본값: print)
+    if out is None or out.lower() == 'print':
+        def get_display_width(text):
+            if text is None:
+                return 0
+            width = 0
+            for char in str(text):
+                if ord(char) > 127:
+                    width += 2
+                else:
+                    width += 1
+            return width
+        
+        def pad_text(text, width):
+            text_str = str(text)
+            text_width = get_display_width(text_str)
+            padding = width - text_width
+            return ' ' * padding + text_str
+        
+        # 인덱스 최대 폭 계산
+        index_widths = [get_display_width(str(idx)) for idx in series_display.index]
+        max_index_width = max(index_widths) if index_widths else 0
+        
+        # 데이터 최대 폭 계산
+        data_widths = [get_display_width(str(val)) for val in series_display]
+        max_data_width = max(data_widths) if data_widths else 0
+        
+        # 헤더 폭 계산
+        korean_header_width = get_display_width(korean_name)
+        english_header_width = get_display_width(series_name)
+        
+        # 각 컬럼의 최대 폭 결정
+        index_column_width = max(max_index_width, 5) + 2  # 'index' 최소 폭
+        data_column_width = max(max_data_width, korean_header_width, english_header_width) + 2
+        
+        # 한글 헤더 출력
+        korean_header = pad_text("인덱스", index_column_width) + pad_text(korean_name, data_column_width)
+        print(korean_header)
+        
+        # 영문 헤더 출력
+        english_header = pad_text("index", index_column_width) + pad_text(series_name, data_column_width)
+        print(english_header)
+        
+        # 데이터 출력
+        for idx, val in series_display.items():
+            data_row = pad_text(str(idx), index_column_width) + pad_text(str(val), data_column_width)
+            print(data_row)
+        
         return None
     
+    elif out.lower() == 'html':
+        # Series를 DataFrame으로 변환하여 HTML 출력
+        df = series_display.to_frame()
+        
+        # 컬럼명 설정
+        if series_name in labels and labels[series_name]:
+            df.columns = [f"{series_name}<br><small>({labels[series_name]})</small>"]
+        else:
+            df.columns = [series_name]
+        
+        from IPython.display import HTML
+        return HTML(df.to_html(escape=False))
+    
     elif out.lower() in ['str', 'string']:
-        # 문자열 반환 (HTML 태그 제거)
-        df_str = df_display.copy()
-        # HTML 태그 제거
-        df_str.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_str.columns]
-        return df_str.to_string()
+        def get_char_width(char):
+            return 2 if ord(char) >= 0x1100 else 1
+        
+        def get_text_width(text):
+            return sum(get_char_width(char) for char in str(text))
+        
+        def align_text(text, width):
+            text_str = str(text)
+            current_width = get_text_width(text_str)
+            padding = max(0, width - current_width)
+            return ' ' * padding + text_str
+        
+        # 인덱스 최대 폭 계산
+        index_widths = [get_text_width(str(idx)) for idx in series_display.index]
+        max_index_width = max(index_widths) if index_widths else 0
+        
+        # 데이터 최대 폭 계산
+        data_widths = [get_text_width(str(val)) for val in series_display]
+        max_data_width = max(data_widths) if data_widths else 0
+        
+        # 헤더 폭 계산
+        korean_header_width = get_text_width(korean_name)
+        english_header_width = get_text_width(series_name)
+        
+        # 각 컬럼의 최대 폭 결정
+        index_column_width = max(max_index_width, get_text_width("인덱스"), get_text_width("index")) + 2
+        data_column_width = max(max_data_width, korean_header_width, english_header_width) + 2
+        
+        result = ""
+        
+        # 한글 헤더 생성
+        korean_header = align_text("인덱스", index_column_width) + align_text(korean_name, data_column_width)
+        result += korean_header + "\n"
+        
+        # 영문 헤더 생성
+        english_header = align_text("index", index_column_width) + align_text(series_name, data_column_width)
+        result += english_header + "\n"
+        
+        # 데이터 생성
+        for idx, val in series_display.items():
+            data_row = align_text(str(idx), index_column_width) + align_text(str(val), data_column_width)
+            result += data_row + "\n"
+        
+        return result.rstrip()
     
     else:
         raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
-
-# 메서드 추가
-setattr(pd.DataFrame, "head_att", pd_head_att)
-setattr(pd.Series, "head_att", series_head_att)
-# 모듈 직접 실행시 setup 함수 호출
-if __name__ == "__main__":
-    setup()
-
-# 사용자 편의 함수들
-def reset_colab_fonts():
-    """
-    Colab에서 폰트 관련 문제가 발생했을 때 완전히 리셋하는 함수
-    """
-    def in_colab():
-        try:
-            import google.colab
-            return True
-        except ImportError:
-            return False
-    
-    if not in_colab():
-        print("❌ 이 함수는 Colab 전용입니다.")
-        return
-    
-    print("🔄 Colab 폰트 완전 리셋을 시작합니다...")
-    
-    try:
-        import subprocess
-        import os
-        from IPython.display import display, Markdown
-        
-        # 1. 모든 폰트 패키지 제거
-        print("🗑️  모든 폰트 패키지 제거 중...")
-        subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-*'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 2. 캐시 완전 정리
-        print("🧹 모든 캐시 정리 중...")
-        subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['rm', '-rf', os.path.expanduser('~/.fontconfig')], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 3. 패키지 목록 업데이트
-        print("📦 패키지 목록 업데이트 중...")
-        subprocess.run(['sudo', 'apt-get', 'update', '-qq'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 4. 필수 폰트 재설치
-        print("📥 필수 폰트 재설치 중...")
-        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', 'fonts-nanum-coding'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 5. 캐시 재구성
-        print("🔧 폰트 캐시 재구성 중...")
-        subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        print("✅ 폰트 리셋 완료!")
-        print("🔄 런타임을 재시작하고 helper.setup()을 다시 실행하세요.")
-        
-        # 재시작 안내
-        reset_guide = """
-# 🔄 폰트 리셋 완료
-
-## 📌 다음 단계
-1. **메뉴 > 런타임 > 런타임 다시 시작** 클릭
-2. 재시작 후 **helper.setup()** 실행
-
-## 💡 이제 정상적으로 작동할 것입니다!
-"""
-        display(Markdown(reset_guide))
-        
-    except Exception as e:
-        print(f"❌ 리셋 중 오류 발생: {str(e)}")
-        print("🔄 수동으로 런타임을 재시작하고 다시 시도하세요.")
-
-def check_font_status():
-    """
-    현재 폰트 설정 상태를 확인하는 함수
-    """
-    print("🔍 폰트 설정 상태 확인 중...")
-    
-    def in_colab():
-        try:
-            import google.colab
-            return True
-        except ImportError:
-            return False
-    
-    import matplotlib.pyplot as plt
-    import matplotlib.font_manager as fm
-    
-    print(f"💻 실행 환경: {'Colab' if in_colab() else '로컬'}")
-    print(f"📝 현재 폰트 패밀리: {plt.rcParams['font.family']}")
-    
-    # 사용 가능한 한글 폰트 목록
-    fonts = [f.name for f in fm.fontManager.ttflist]
-    korean_fonts = [f for f in fonts if any(keyword in f for keyword in ['Nanum', 'Gothic', 'Malgun', 'Dotum', 'Batang'])]
-    
-    if korean_fonts:
-        print("✅ 사용 가능한 한글 폰트:")
-        for font in korean_fonts:
-            print(f"  - {font}")
-    else:
-        print("❌ 한글 폰트를 찾을 수 없습니다.")
-    
-    # Colab에서 폰트 패키지 확인
-    if in_colab():
-        import os
-        fonts_installed = os.system("dpkg -l | grep fonts-nanum") == 0
-        print(f"📦 fonts-nanum 패키지: {'✅ 설치됨' if fonts_installed else '❌ 미설치'}")
-    
-    # 간단한 테스트
-    try:
-        import matplotlib.pyplot as plt
-        import numpy as np
-        
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.text(0.5, 0.5, '한글 폰트 테스트', ha='center', va='center', fontsize=16)
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_title('폰트 테스트')
-        plt.tight_layout()
-        plt.show()
-        
-        print("🎨 폰트 테스트 완료!")
-        
-    except Exception as e:
-        print(f"❌ 폰트 테스트 실패: {str(e)}")
