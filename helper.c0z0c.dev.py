@@ -116,9 +116,10 @@ font_path={font_path}
         md = f"""
 **❌ 오류 발생**: {str(e)}
 폰트 설정에 실패했습니다. 폰트 파일이 존재하는지 확인하세요.
-font_path={font_path}
 """
         display(Markdown(md))   
+        # 폰트를 삭제 하고 다시 설치 하자
+
 
 # load_font()
 
