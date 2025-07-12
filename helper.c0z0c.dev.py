@@ -307,10 +307,10 @@ def dir_start(object, cmd):
 # DataFrame / Series 출력시 한글 컬럼 설명 기능 추가
 
 def set_pandas_extension():
-    """
-    pandas DataFrame/Series에 한글 컬럼 설명 기능을 추가합니다.
-    """
-    print("📊 pandas 확장 기능을 설정합니다...")
+    # """
+    # pandas DataFrame/Series에 한글 컬럼 설명 기능을 추가합니다.
+    # """
+    # print("📊 pandas 확장 기능을 설정합니다...")
     
     # pandas 옵션 설정
     pd.set_option("display.max_rows", 100)
@@ -318,7 +318,7 @@ def set_pandas_extension():
     
     # 이미 설정되어 있는지 확인
     if hasattr(pd.DataFrame, 'head_att'):
-        print("✔️ pandas 확장 기능이 이미 설정되어 있습니다.")
+        print("📊 pandas 확장 기능이 이미 설정되어 있습니다.")
         return
     
     # 메서드들을 pandas DataFrame/Series에 추가
@@ -357,8 +357,8 @@ def setup():
         print("🎉 모든 설정이 완료되었습니다!")
         print("사용 가능한 기능:")
         print("- 한글 폰트 지원 (matplotlib)")
-        print("- pd_read_csv(): Colab/로컬 파일 읽기")
-        print("- dir_start(): 라이브러리 도움말 검색")
+        print("- helper.pd_read_csv(): Colab/로컬 파일 읽기")
+        print("- helper.dir_start(): 라이브러리 도움말 검색")
         print("- DataFrame.head_att(): 한글 컬럼 설명")
         
     except Exception as e:
