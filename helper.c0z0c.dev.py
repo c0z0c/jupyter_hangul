@@ -36,6 +36,7 @@ def font_download():
         import subprocess
         subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("📥 프로세서가 종료 됩니다. 장시후 힌번 더 시도 하세요")
         subprocess.run(['sudo', 'fc-cache', '-fv'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
