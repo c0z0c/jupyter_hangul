@@ -460,9 +460,9 @@ setattr(pd.Series, "remove_head_att", remove_head_att)
 setattr(pd.DataFrame, "clear_head_att", clear_head_att)
 setattr(pd.Series, "clear_head_att", clear_head_att)
 
-def pd_head_att(self, rows=5):
+def pd_head_att(self, rows=5, out=None):
     """
-    한글 컬럼 설명이 포함된 DataFrame을 HTML로 출력합니다.
+    한글 컬럼 설명이 포함된 DataFrame을 다양한 형태로 출력합니다.
     
     Parameters:
     -----------
@@ -470,18 +470,22 @@ def pd_head_att(self, rows=5):
         - int: 출력할 행 수
         - "all" or -1: 모든 행 출력
         - 0: 헤더만 출력
+    out : str, optional
+        - 'html' or None: HTML 형식으로 출력 (기본값)
+        - 'print': print 문으로 출력
+        - 'str' or 'string': 문자열로 반환
         
     Returns:
     --------
-    IPython.display.HTML : HTML 형식의 테이블
+    IPython.display.HTML or str or None : 출력 방식에 따라 다름
     
     Examples:
     ---------
     >>> df.set_head_att({"id": "ID", "name": "이름"})
-    >>> df.head_att(10)  # 10행 출력
-    >>> df.head_att("all")  # 모든 행 출력
+    >>> df.head_att(10)  # HTML 출력 (기본)
+    >>> df.head_att(10, out='print')  # print 출력
+    >>> result = df.head_att(10, out='str')  # 문자열 반환
     """
-    from IPython.display import HTML
     
     labels = self.attrs.get("column_descriptions", {})
     
@@ -510,27 +514,54 @@ def pd_head_att(self, rows=5):
     else:
         df_display = df_copy.head(5)
     
-    return HTML(df_display.to_html(escape=False))
+    # 출력 방식 결정
+    if out is None or out.lower() == 'html':
+        # HTML 출력 (기본)
+        from IPython.display import HTML
+        return HTML(df_display.to_html(escape=False))
+    
+    elif out.lower() == 'print':
+        # print 출력 (HTML 태그 제거)
+        df_print = df_display.copy()
+        # HTML 태그 제거
+        df_print.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_print.columns]
+        print(df_print.to_string())
+        return None
+    
+    elif out.lower() in ['str', 'string']:
+        # 문자열 반환 (HTML 태그 제거)
+        df_str = df_display.copy()
+        # HTML 태그 제거
+        df_str.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_str.columns]
+        return df_str.to_string()
+    
+    else:
+        raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
 
-def series_head_att(self, rows=5):
+def series_head_att(self, rows=5, out=None):
     """
-    한글 컬럼 설명이 포함된 Series를 HTML로 출력합니다.
+    한글 컬럼 설명이 포함된 Series를 다양한 형태로 출력합니다.
     
     Parameters:
     -----------
     rows : int, default 5
         출력할 행 수
+    out : str, optional
+        - 'html' or None: HTML 형식으로 출력 (기본값)
+        - 'print': print 문으로 출력
+        - 'str' or 'string': 문자열로 반환
         
     Returns:
     --------
-    IPython.display.HTML : HTML 형식의 테이블
+    IPython.display.HTML or str or None : 출력 방식에 따라 다름
     
     Examples:
     ---------
     >>> s.set_head_att({"value": "값"})
-    >>> s.head_att(10)
+    >>> s.head_att(10)  # HTML 출력 (기본)
+    >>> s.head_att(10, out='print')  # print 출력
+    >>> result = s.head_att(10, out='str')  # 문자열 반환
     """
-    from IPython.display import HTML
     
     df = self.to_frame()
     labels = self.attrs.get("column_descriptions", {})
@@ -541,8 +572,35 @@ def series_head_att(self, rows=5):
             header = f"{col_name}<br><small>({labels[col_name]})</small>"
             df.columns = [header]
     
-    return HTML(df.head(rows).to_html(escape=False))
+    df_display = df.head(rows)
+    
+    # 출력 방식 결정
+    if out is None or out.lower() == 'html':
+        # HTML 출력 (기본)
+        from IPython.display import HTML
+        return HTML(df_display.to_html(escape=False))
+    
+    elif out.lower() == 'print':
+        # print 출력 (HTML 태그 제거)
+        df_print = df_display.copy()
+        # HTML 태그 제거
+        df_print.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_print.columns]
+        print(df_print.to_string())
+        return None
+    
+    elif out.lower() in ['str', 'string']:
+        # 문자열 반환 (HTML 태그 제거)
+        df_str = df_display.copy()
+        # HTML 태그 제거
+        df_str.columns = [col.replace('<br>', ' ').replace('<small>', '').replace('</small>', '').replace('(', '').replace(')', '') for col in df_str.columns]
+        return df_str.to_string()
+    
+    else:
+        raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
 
+# 메서드 추가
+setattr(pd.DataFrame, "head_att", pd_head_att)
+setattr(pd.Series, "head_att", series_head_att)
 # 모듈 직접 실행시 setup 함수 호출
 if __name__ == "__main__":
     setup()
