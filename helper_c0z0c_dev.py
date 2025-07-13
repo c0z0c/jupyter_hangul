@@ -185,7 +185,7 @@ def load_font():
             print("helper.font_download()를 다시 실행해보세요.")
 
 # pandas 옵션 설정
-pd.set_option("display.max_rows", 100)
+pd.set_option("display.max_rows", 30)
 pd.set_option("display.max_columns", 100)
 
 def pd_read_csv(path):
