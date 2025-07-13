@@ -870,21 +870,34 @@ def _update_column_descriptions(self, current_set, target_set):
     if 'column_descriptions' not in self.attrs:
         return
     
+    # 컬럼명 변경 전의 old_columns와 변경 후의 new_columns(self.columns) 매핑
     current_columns = self.attrs['columns_extra'][current_set]['columns']
+    target_columns = self.attrs['columns_extra'][target_set]['columns']
+    
+    # 현재 컬럼명 → 원본 컬럼명 매핑
     current_to_org = {v: k for k, v in current_columns.items()}
+    
+    # 변경 전 컬럼명 목록 생성 (현재 self.columns는 이미 변경된 상태)
+    old_columns = []
+    for new_col in self.columns:  # new_col은 변경된 컬럼명
+        # 새 컬럼명에서 원본 컬럼명 찾기
+        target_to_org = {v: k for k, v in target_columns.items()}
+        if new_col in target_to_org:
+            org_col = target_to_org[new_col]
+            # 원본 컬럼명에서 이전 컬럼명 찾기
+            if org_col in current_columns:
+                old_columns.append(current_columns[org_col])
+            else:
+                old_columns.append(org_col)
+        else:
+            old_columns.append(new_col)
     
     old_descriptions = self.attrs['column_descriptions'].copy()
     new_descriptions = {}
     
-    for old_col, new_col in zip(self.columns, self.columns):
-        if old_col in current_to_org:
-            org_col = current_to_org[old_col]
-        else:
-            org_col = old_col
-        
-        if org_col in old_descriptions:
-            new_descriptions[new_col] = old_descriptions[org_col]
-        elif old_col in old_descriptions:
+    # 변경 전 컬럼명과 변경 후 컬럼명을 매핑
+    for old_col, new_col in zip(old_columns, self.columns):
+        if old_col in old_descriptions:
             new_descriptions[new_col] = old_descriptions[old_col]
     
     self.attrs['column_descriptions'] = new_descriptions
