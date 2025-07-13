@@ -2,7 +2,7 @@
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
 🚀 기본 사용법:
-    import helper.c0z0c.dev as helper
+    import helper_c0z0c_dev as helper
     helper.setup()  # 한번에 모든 설정 완료
 
 🔧 개별 실행:

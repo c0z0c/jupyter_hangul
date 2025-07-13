@@ -3,8 +3,8 @@
 ## 📥 설치 (한 줄로 끝!)
 
 ```python
-!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper.c0z0c.dev.py
-import helper.c0z0c.dev as helper
+!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py
+import helper_c0z0c_dev as helper
 helper.setup()  # 모든 설정 완료!
 ```
 
