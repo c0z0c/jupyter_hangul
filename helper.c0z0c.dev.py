@@ -364,32 +364,56 @@ def clear_head_att(self):
         self.attrs = {}
     self.attrs["column_descriptions"] = {}
 
-def _align_text(text, width):
-    """텍스트를 지정된 폭에 맞춰 오른쪽 정렬"""
+def _align_text(text, width, align='left'):
+    """텍스트를 지정된 폭에 맞춰 정렬"""
     text_str = str(text)
     current_width = _get_text_width(text_str)
     padding = max(0, width - current_width)
-    return ' ' * padding + text_str
+    
+    if align == 'right':
+        return ' ' * padding + text_str
+    elif align == 'center':
+        left_padding = padding // 2
+        right_padding = padding - left_padding
+        return ' ' * left_padding + text_str + ' ' * right_padding
+    else:  # left (default)
+        return text_str + ' ' * padding
 
 def _calculate_column_widths(df_display, labels):
-    """컬럼 폭 계산"""
+    """컬럼 폭 계산 (pandas 기본 스타일)"""
     widths = []
-    for i, col in enumerate(df_display.columns):
+    
+    # 첫 번째 컬럼: 인덱스 폭 계산
+    if len(df_display) == 0:
+        max_index_width = 1  # 최소 폭
+    else:
+        max_index_width = max(_get_text_width(str(idx)) for idx in df_display.index)
+    
+    # 인덱스 컬럼 폭 (pandas 스타일: 최소 여유 공간)
+    index_width = max_index_width + 1
+    widths.append(index_width)
+    
+    # 나머지 컬럼들
+    for col in df_display.columns:
         korean_name = labels.get(col, col)
         english_name = col
         
-        max_data_width = max(_get_text_width(str(val)) for val in df_display[col])
+        # 데이터가 비어있을 때 처리
+        if len(df_display) == 0:
+            max_data_width = 0
+        else:
+            max_data_width = max(_get_text_width(str(val)) for val in df_display[col])
         
-        if i == 0:  # 첫 번째 컬럼은 인덱스 폭도 고려
-            max_index_width = max(_get_text_width(str(idx)) for idx in df_display.index)
-            max_data_width = max(max_data_width, max_index_width)
-        
+        # 각 요소의 최대 폭 계산
         max_width = max(
             _get_text_width(korean_name),
             _get_text_width(english_name),
             max_data_width
         )
-        widths.append(max_width + 2)
+        
+        # pandas 스타일: 최소 여유 공간 (1칸)
+        column_width = max_width + 1
+        widths.append(column_width)
     
     return widths
 
@@ -421,27 +445,36 @@ def pd_head_att(self, rows=5, out=None):
         raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
 
 def _print_head_att(self, df_display, labels):
-    """print 형태로 출력"""
+    """print 형태로 출력 (pandas 기본 스타일)"""
     column_widths = _calculate_column_widths(df_display, labels)
     
-    # 한글 헤더
-    korean_parts = [_align_text(labels.get(col, col), width) 
-                   for col, width in zip(df_display.columns, column_widths)]
+    # 첫 번째 부분은 인덱스용
+    index_width = column_widths[0]
+    data_widths = column_widths[1:]
+    
+    # 한글 헤더 출력 (오른쪽 정렬)
+    korean_parts = []
+    korean_parts.append(_align_text('', index_width, 'right'))  # 인덱스 헤더는 빈공간
+    for col, width in zip(df_display.columns, data_widths):
+        korean_name = labels.get(col, col)
+        korean_parts.append(_align_text(korean_name, width, 'right'))
     print(''.join(korean_parts))
     
-    # 영문 헤더
-    english_parts = [_align_text(col, width) 
-                    for col, width in zip(df_display.columns, column_widths)]
+    # 영문 헤더 출력 (오른쪽 정렬)
+    english_parts = []
+    english_parts.append(_align_text('', index_width, 'right'))  # 인덱스 헤더는 빈공간
+    for col, width in zip(df_display.columns, data_widths):
+        english_parts.append(_align_text(col, width, 'right'))
     print(''.join(english_parts))
     
-    # 데이터 출력
+    # 데이터 출력 (모두 오른쪽 정렬 - pandas 기본 스타일)
     for idx, row in df_display.iterrows():
         row_parts = []
-        for i, (val, width) in enumerate(zip([idx] + list(row), column_widths)):
-            if i == 0:
-                row_parts.append(_align_text(str(val) + str(row.iloc[0]), width))
-            else:
-                row_parts.append(_align_text(str(val), width))
+        # 인덱스 출력 (오른쪽 정렬)
+        row_parts.append(_align_text(str(idx), index_width, 'right'))
+        # 데이터 출력 (오른쪽 정렬)
+        for val, width in zip(row, data_widths):
+            row_parts.append(_align_text(str(val), width, 'right'))
         print(''.join(row_parts))
 
 def _html_head_att(self, df_display, labels):
@@ -449,7 +482,7 @@ def _html_head_att(self, df_display, labels):
     header = []
     for col in df_display.columns:
         if col in labels and labels[col]:
-            header.append(f"{labels[col]}<br><small>{col}</small>")
+            header.append(f"{labels[col]}<br>{col}")
         else:
             header.append(col)
     
@@ -547,7 +580,7 @@ def series_head_att(self, rows=5, out=None):
         df = series_display.to_frame()
         
         if series_name in labels and labels[series_name]:
-            df.columns = [f"{labels[series_name]}<br><small>{series_name}</small>"]
+            df.columns = [f"{labels[series_name]}<br>{series_name}"]
         else:
             df.columns = [series_name]
         
