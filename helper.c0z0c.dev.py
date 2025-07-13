@@ -249,6 +249,8 @@ def set_pandas_extension():
     setattr(pd.DataFrame, "_init_column_attrs", _init_column_attrs)
     setattr(pd.DataFrame, "_convert_columns", _convert_columns)
     setattr(pd.DataFrame, "_update_column_descriptions", _update_column_descriptions)
+    setattr(pd.DataFrame, "_set_head_ext_bulk", _set_head_ext_bulk)
+    setattr(pd.DataFrame, "_set_head_ext_individual", _set_head_ext_individual)
     setattr(pd.Series, "head_att", series_head_att)
     
     # 컬럼 세트 관리 기능
@@ -260,6 +262,13 @@ def set_pandas_extension():
         setattr(cls, "list_head_ext", list_head_ext)
         setattr(cls, "reset_head_column", reset_head_column)
         setattr(cls, "remove_head_ext", remove_head_ext)
+    
+    # Series에도 새 함수들 추가
+    setattr(pd.Series, "_set_head_ext_bulk", _set_head_ext_bulk)
+    setattr(pd.Series, "_set_head_ext_individual", _set_head_ext_individual)
+    setattr(pd.Series, "_init_column_attrs", _init_column_attrs)
+    setattr(pd.Series, "_convert_columns", _convert_columns)
+    setattr(pd.Series, "_update_column_descriptions", _update_column_descriptions)
     
     print("✅ pandas 확장 기능이 성공적으로 설정되었습니다.")
 
@@ -592,16 +601,23 @@ def _init_column_attrs(self):
         }
         self.attrs['current_column_set'] = 'org'
 
-def set_head_ext(self, columns_name, columns_extra):
+def set_head_ext(self, columns_name, columns_extra=None, column_value=None):
     """
     보조 컬럼명 세트를 설정합니다.
+    
+    사용법:
+    1. 전체 세트 설정: set_head_ext('kr', {'id': 'ID', 'name': '이름'})
+    2. 개별 컬럼 설정: set_head_ext('kr', 'name', '이름')
     
     Parameters:
     -----------
     columns_name : str
         컬럼 세트의 이름 (예: 'kr', 'desc', 'eng')
-    columns_extra : dict
-        컬럼 매핑 딕셔너리 {"원본컬럼": "새컬럼명"}
+    columns_extra : dict or str
+        방식1: 전체 매핑 딕셔너리 {"원본컬럼": "새컬럼명"}
+        방식2: 개별 컬럼명 (키)
+    column_value : str, optional
+        방식2에서 사용할 컬럼 값
     
     Raises:
     -------
@@ -612,8 +628,19 @@ def set_head_ext(self, columns_name, columns_extra):
     Examples:
     ---------
     >>> df.set_head_ext('kr', {'id': 'ID', 'name': '이름'})
+    >>> df.set_head_ext('kr', 'score', '점수')  # 개별 추가
     >>> df.set_head_ext('desc', {'id': '식별자', 'name': '성명'})
     """
+    # 입력 방식 판단
+    if column_value is not None:
+        # 방식 2: 개별 컬럼 설정
+        return self._set_head_ext_individual(columns_name, columns_extra, column_value)
+    else:
+        # 방식 1: 전체 세트 설정
+        return self._set_head_ext_bulk(columns_name, columns_extra)
+
+def _set_head_ext_bulk(self, columns_name, columns_extra):
+    """전체 세트 설정 (기존 방식)"""
     # 1. 입력 타입 검증
     if not isinstance(columns_name, str):
         raise TypeError(f"columns_name은 문자열이어야 합니다. 현재 타입: {type(columns_name)}")
@@ -663,6 +690,52 @@ def set_head_ext(self, columns_name, columns_extra):
     
     print(f"✅ 컬럼 세트 '{columns_name}' 설정 완료")
     print(f"📊 {len(columns_extra)}개 컬럼 매핑됨")
+
+def _set_head_ext_individual(self, columns_name, column_key, column_value):
+    """개별 컬럼 설정 (새로운 방식)"""
+    # 입력 검증
+    if not isinstance(columns_name, str):
+        raise TypeError(f"columns_name은 문자열이어야 합니다. 현재 타입: {type(columns_name)}")
+    
+    if not isinstance(column_key, str):
+        raise TypeError(f"column_key는 문자열이어야 합니다. 현재 타입: {type(column_key)}")
+    
+    if column_value is None:
+        raise ValueError("column_value는 None일 수 없습니다.")
+    
+    if not columns_name.strip():
+        raise ValueError("columns_name은 비어있을 수 없습니다.")
+    
+    if not column_key.strip():
+        raise ValueError("column_key는 비어있을 수 없습니다.")
+    
+    if columns_name == 'org':
+        raise ValueError("'org'는 예약된 세트명입니다. 다른 이름을 사용하세요.")
+    
+    # 컬럼 존재 확인
+    if column_key not in self.columns:
+        raise KeyError(f"컬럼 '{column_key}'이 DataFrame에 존재하지 않습니다.")
+    
+    self._init_column_attrs()
+    
+    # 세트가 존재하지 않으면 생성
+    if columns_name not in self.attrs['columns_extra']:
+        self.attrs['columns_extra'][columns_name] = {
+            'name': columns_name,
+            'columns': {}
+        }
+    
+    # 개별 컬럼 업데이트
+    old_value = self.attrs['columns_extra'][columns_name]['columns'].get(column_key)
+    self.attrs['columns_extra'][columns_name]['columns'][column_key] = column_value
+    
+    if old_value is None:
+        print(f"✅ 컬럼 세트 '{columns_name}'에 '{column_key}' → '{column_value}' 추가")
+    else:
+        print(f"✅ 컬럼 세트 '{columns_name}'에서 '{column_key}': '{old_value}' → '{column_value}' 수정")
+    
+    total_mappings = len(self.attrs['columns_extra'][columns_name]['columns'])
+    print(f"📊 현재 '{columns_name}' 세트 총 매핑 수: {total_mappings}개")
 
 def set_head_column(self, columns_name):
     """
