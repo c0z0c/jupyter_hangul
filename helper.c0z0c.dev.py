@@ -323,24 +323,52 @@ def set_head_att(self, key_or_dict, value=None):
     else:
         raise ValueError("사용법: set_head_att(dict) 또는 set_head_att(key, value)")
 
-def get_head_att(self):
+def get_head_att(self, key=None):
     """
     컬럼 설명을 반환합니다.
     
+    Parameters:
+    -----------
+    key : str, optional
+        특정 컬럼의 설명을 가져올 컬럼명. None이면 전체 딕셔너리 반환
+    
     Returns:
     --------
-    dict : 컬럼 설명 딕셔너리 (직접 수정 가능)
+    dict or str : 
+        - key가 None이면 전체 컬럼 설명 딕셔너리 반환
+        - key가 주어지면 해당 컬럼의 설명 문자열 반환
+    
+    Raises:
+    -------
+    KeyError : 존재하지 않는 컬럼명을 요청했을 때
+    TypeError : key가 문자열이 아닐 때
     
     Examples:
     ---------
-    >>> descriptions = df.get_head_att()
-    >>> descriptions['new_col'] = '새로운 설명'
+    >>> descriptions = df.get_head_att()           # 전체 딕셔너리
+    >>> score_desc = df.get_head_att('score')     # 특정 컬럼 설명
+    >>> descriptions['new_col'] = '새로운 설명'    # 딕셔너리 직접 수정 가능
     """
+    # attrs 초기화
     if not hasattr(self, 'attrs'):
         self.attrs = {}
     if 'column_descriptions' not in self.attrs:
         self.attrs["column_descriptions"] = {}
-    return self.attrs["column_descriptions"]
+    
+    # key가 None이면 전체 딕셔너리 반환
+    if key is None:
+        return self.attrs["column_descriptions"]
+    
+    # key 타입 검증
+    if not isinstance(key, str):
+        raise TypeError(f"key는 문자열이어야 합니다. 현재 타입: {type(key)}")
+    
+    # key 존재 여부 확인
+    if key not in self.attrs["column_descriptions"]:
+        available_keys = list(self.attrs["column_descriptions"].keys())
+        raise KeyError(f"컬럼 '{key}'에 대한 설명이 없습니다. 사용 가능한 컬럼: {available_keys}")
+    
+    return self.attrs["column_descriptions"][key]
 
 def remove_head_att(self, key):
     """
