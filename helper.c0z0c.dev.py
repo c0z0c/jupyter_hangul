@@ -655,7 +655,15 @@ def set_head_ext(self, columns_name, columns_extra):
     }
     
     print(f"✅ 컬럼 세트 '{columns_name}' 설정 완료")
-    print(f"📋 등록된 컬럼: {list(columns_extra.keys())}")
+    
+    # 원본과 새 컬럼을 나란히 표시
+    org_columns = list(columns_extra.keys())
+    new_columns = list(columns_extra.values())
+    
+    print("📋 컬럼 매핑:")
+    print(f"    org: {org_columns}")
+    print(f" {columns_name:>6}: {new_columns}")
+    print(f"📊 총 {len(columns_extra)}개 컬럼 매핑됨")
 
 def set_head_column(self, columns_name):
     """
@@ -792,19 +800,17 @@ def list_head_ext(self):
     current_set = self.get_current_column_set()
     
     print("📋 등록된 컬럼 세트:")
+    
+    # 모든 컬럼 세트의 이름 중 가장 긴 이름의 길이 계산 (정렬용)
+    max_name_length = max(len(name) for name in self.attrs['columns_extra'].keys())
+    
     for name, info in self.attrs['columns_extra'].items():
-        columns_count = len(info['columns'])
+        columns_list = list(info['columns'].values()) if name != 'org' else list(info['columns'].keys())
         status = " (현재)" if name == current_set else ""
-        print(f"  🔹 {name}{status}: {columns_count}개 컬럼")
         
-        if name == 'org':
-            print(f"    (원본 컬럼)")
-        else:
-            sample_cols = list(info['columns'].items())[:3]
-            for orig, new in sample_cols:
-                print(f"    {orig} → {new}")
-            if len(info['columns']) > 3:
-                print(f"    ... 외 {len(info['columns'])-3}개")
+        # 이름을 오른쪽 정렬로 출력
+        formatted_name = f"{name}{status}".rjust(max_name_length + 5)
+        print(f"{formatted_name}: {columns_list}")
 
 def reset_head_column(self):
     """
