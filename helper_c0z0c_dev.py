@@ -959,7 +959,6 @@ def list_head_ext(self):
         formatted_name = f"{name}{status}".rjust(max_name_length + 5)
         print(f"{formatted_name}: {columns_list}")
 
-def reset_head_column(self):
 def clear_head_ext(self):
     """컬럼명을 원본으로 복원 및 컬럼 세트 초기화"""
     if not hasattr(self, 'attrs') or 'columns_extra' not in self.attrs:
