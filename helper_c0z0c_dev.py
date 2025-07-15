@@ -453,7 +453,34 @@ def _calculate_column_widths(df_display, labels):
     return widths
 
 def pd_head_att(self, rows=5, out=None):
-    """한글 컬럼 설명이 포함된 DataFrame을 다양한 형태로 출력합니다."""
+    """한글 컬럼 설명이 포함된 DataFrame을 다양한 형태로 출력합니다.
+    import pandas as pd
+    df.head_att()
+    df.head_att(rows=5, out='print')
+    df.head_att(rows='all', out='html')
+    Parameters:
+    -----------
+    rows : int or str, optional
+        출력할 행 수 (기본값: 5)
+    out : str, optional
+        출력 형식 (기본값: 'print')
+        'print', 'html', 'str' 중 하나를 선택할 수 있습니다.
+    Returns:
+    --------
+    str or None
+        - 'print'일 경우 None 반환 (콘솔 출력)
+        - 'html'일 경우 HTML 객체 반환
+        - 'str'일 경우 문자열 형태로 반환
+    Raises:
+    -------
+    ValueError : 잘못된 out 옵션
+    Examples:
+    ---------
+    >>> df.head_att()  # 기본 출력 (5행)
+    >>> df.head_att(rows=10)  # 10행 출력
+    >>> df.head_att(out='html')  # HTML 형태로 출력
+    >>> df.head_att(rows='all', out='print')  # 전체 데이터 출력 (콘솔)
+    """
     labels = self.attrs.get("column_descriptions", {})
     
     # 출력할 데이터 결정
