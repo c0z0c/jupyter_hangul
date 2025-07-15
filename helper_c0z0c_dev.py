@@ -161,6 +161,7 @@ def load_font():
                 print("� Google Drive 없이 계속 진행합니다...")
             
             plt.rc("font", family="NanumBarunGothic")
+            plt.rcParams['axes.unicode_minus'] = False
             display(Markdown("**💻 실행 환경**: Colab\n✅ 한글 폰트가 성공적으로 설정되었습니다."))
         else:
             is_colab = False
@@ -171,6 +172,7 @@ def load_font():
             try:
                 fm.fontManager.addfont(font_path)
                 plt.rcParams["font.family"] = "NanumGothic"
+                plt.rcParams['axes.unicode_minus'] = False
                 display(Markdown("**💻 실행 환경**: 로컬\n✅ 한글 폰트가 성공적으로 설정되었습니다."))
             except Exception as e:
                 display(Markdown(f"**❌ 오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))
