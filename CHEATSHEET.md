@@ -3,8 +3,8 @@
 ## 📥 설치 (한 줄로 끝!)
 
 ```python
-!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper.c0z0c.dev.py
-import helper.c0z0c.dev as helper
+!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py
+import helper_c0z0c_dev as helper
 helper.setup()  # 모든 설정 완료!
 ```
 
@@ -69,7 +69,7 @@ df.set_head_att("col1", "새로운 설명")
 df.get_head_att()
 
 # 설명 삭제
-df.remove_head_att("col1")  # 특정 컬럼
+df.remove_head_att("col1")  # 특정 컬럼 (리스트도 지원)
 df.clear_head_att()         # 모든 컬럼
 ```
 

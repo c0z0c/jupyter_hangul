@@ -4,21 +4,12 @@
 
 ### 1️⃣ 첫 번째 실행
 ```python
-# 모듈 다운로드 및 로드
 import urllib.request
-import importlib.util
-import sys
-
 # 모듈 다운로드
-url = "https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper.c0z0c.dev.py"
-urllib.request.urlretrieve(url, "helper.c0z0c.dev.py")
-
-# 모듈 로드
-spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
-helper = importlib.util.module_from_spec(spec)
-sys.modules["helper"] = helper
-spec.loader.exec_module(helper)
-
+url = "https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py"
+urllib.request.urlretrieve(url, "helper_c0z0c_dev.py")
+# 모듈 import
+import helper_c0z0c_dev as helper
 # 설정 시작
 helper.setup()
 ```
@@ -28,15 +19,7 @@ helper.setup()
 
 ```python
 # 재시작 후 실행
-import importlib.util
-import sys
-
-# 모듈 다시 로드
-spec = importlib.util.spec_from_file_location("helper", "helper.c0z0c.dev.py")
-helper = importlib.util.module_from_spec(spec)
-sys.modules["helper"] = helper
-spec.loader.exec_module(helper)
-
+import helper_c0z0c_dev as helper
 # 설정 완료
 helper.setup()
 ```

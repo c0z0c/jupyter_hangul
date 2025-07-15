@@ -58,24 +58,25 @@ helper.load_font()
 helper.set_pandas_extension()
 ```
 
-## 사용법
+import helper_c0z0c_dev as helper
 
 ### 한글 폰트 설정
 
 ```python
 import matplotlib.pyplot as plt
 import helper.c0z0c.dev as helper
+!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py
 
 helper.setup()  # 한글 폰트 자동 설정
 
 # 이제 matplotlib에서 한글 사용 가능
-plt.plot([1, 2, 3, 4])
+import helper_c0z0c_dev as helper
 plt.title("한글 제목")
 plt.xlabel("X축 레이블")
 plt.ylabel("Y축 레이블")
 plt.show()
 ```
-
+import helper_c0z0c_dev as helper
 ### pandas 확장 기능
 
 ```python
@@ -90,7 +91,7 @@ df = pd.DataFrame({
     'name': ['홍길동', '김철수', '이영희'],
     'age': [25, 30, 35]
 })
-
+import helper_c0z0c_dev as helper
 # 컬럼 설명 설정
 df.set_head_att({
     'id': 'ID',
@@ -105,7 +106,7 @@ df.head_att(out='str')     # 문자열 형식
 
 # Series도 지원
 series = df['name']
-series.set_head_att('name', '사용자 이름')
+import helper_c0z0c_dev as helper
 series.head_att()
 ```
 
@@ -151,7 +152,6 @@ helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검�
 - `df.set_head_att(descriptions)`: 컬럼 설명 설정
 - `df.get_head_att()`: 컬럼 설명 반환
 - `df.remove_head_att(column)`: 특정 컬럼 설명 삭제
-- `df.clear_head_att()`: 모든 컬럼 설명 초기화
 - `df.head_att(rows=5, out=None)`: 한글 설명이 포함된 DataFrame 출력
   - `out='print'`: 콘솔 출력 (기본값)
   - `out='html'`: HTML 형식 (Jupyter/Colab에서 예쁘게 표시)
