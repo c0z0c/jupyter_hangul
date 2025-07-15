@@ -2,7 +2,7 @@
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
 🚀 기본 사용법:
-    import helper_c0z0c_dev as helper
+    import helper.c0z0c.dev as helper
     helper.setup()  # 한번에 모든 설정 완료
 
 🔧 개별 실행:
@@ -240,6 +240,7 @@ def set_pandas_extension():
         setattr(cls, "get_head_att", get_head_att)
         setattr(cls, "remove_head_att", remove_head_att)
         setattr(cls, "clear_head_att", clear_head_att)
+        setattr(cls, "clear_head_ext", clear_head_ext)
     
     # DataFrame/Series별 출력 함수
     setattr(pd.DataFrame, "head_att", pd_head_att)
@@ -260,7 +261,7 @@ def set_pandas_extension():
         setattr(cls, "get_current_column_set", get_current_column_set)
         setattr(cls, "get_head_ext", get_head_ext)
         setattr(cls, "list_head_ext", list_head_ext)
-        setattr(cls, "reset_head_column", reset_head_column)
+        setattr(cls, "clear_head_ext", clear_head_ext)
         setattr(cls, "remove_head_ext", remove_head_ext)
     
     # Series에도 새 함수들 추가
@@ -372,19 +373,25 @@ def get_head_att(self, key=None):
 
 def remove_head_att(self, key):
     """
-    특정 컬럼 설명을 삭제합니다.
+    특정 컬럼 설명 또는 컬럼 설명 리스트 삭제
     
     Parameters:
     -----------
-    key : str
-        삭제할 컬럼명
-        
-    Examples:
-    ---------
-    >>> df.remove_head_att("id")
+    key : str or list
+        삭제할 컬럼명 또는 컬럼명 리스트
     """
-    if hasattr(self, 'attrs') and 'column_descriptions' in self.attrs:
-        self.attrs["column_descriptions"].pop(key, None)
+    if not hasattr(self, 'attrs') or 'column_descriptions' not in self.attrs:
+        return
+
+    if isinstance(key, str):
+        key = [key]
+
+    for k in key:
+        if k in self.attrs["column_descriptions"]:
+            self.attrs["column_descriptions"].pop(k)
+            print(f"✅ 컬럼 설명 '{k}' 삭제 완료")
+        else:
+            print(f"❌ '{k}' 컬럼 설명을 찾을 수 없습니다.")
 
 def clear_head_att(self):
     """모든 컬럼 설명을 초기화합니다."""
@@ -767,9 +774,6 @@ def _set_head_ext_individual(self, columns_name, column_key, column_value):
     if not columns_name.strip():
         raise ValueError("columns_name은 비어있을 수 없습니다.")
     
-    if not column_key.strip():
-        raise ValueError("column_key는 비어있을 수 없습니다.")
-    
     if columns_name == 'org':
         raise ValueError("'org'는 예약된 세트명입니다. 다른 이름을 사용하세요.")
     
@@ -956,6 +960,7 @@ def list_head_ext(self):
         print(f"{formatted_name}: {columns_list}")
 
 def reset_head_column(self):
+def clear_head_ext(self):
     """컬럼명을 원본으로 복원 및 컬럼 세트 초기화"""
     if not hasattr(self, 'attrs') or 'columns_extra' not in self.attrs:
         return
@@ -972,22 +977,30 @@ def reset_head_column(self):
     print("🧹 모든 컬럼 세트를 초기화했습니다.")
 
 def remove_head_ext(self, columns_name):
-    """특정 컬럼 세트 삭제"""
+    """
+    특정 컬럼 세트 또는 컬럼 세트 리스트 삭제
+    Parameters:
+    -----------
+    columns_name : str or list
+        삭제할 컬럼 세트명 또는 세트명 리스트
+    """
     if not hasattr(self, 'attrs') or 'columns_extra' not in self.attrs:
         return
-    
-    if columns_name == 'org':
-        print("❌ 'org' 세트는 삭제할 수 없습니다.")
-        return
-    
+
+    if isinstance(columns_name, str):
+        columns_name = [columns_name]
+
     current_set = self.get_current_column_set()
-    if columns_name == current_set:
-        print(f"❌ 현재 활성화된 '{columns_name}' 세트는 삭제할 수 없습니다.")
-        print("💡 먼저 다른 세트로 변경하거나 원본으로 복원하세요.")
-        return
-    
-    if columns_name in self.attrs['columns_extra']:
-        del self.attrs['columns_extra'][columns_name]
-        print(f"✅ 컬럼 세트 '{columns_name}' 삭제 완료")
-    else:
-        print(f"❌ '{columns_name}' 컬럼 세트를 찾을 수 없습니다.")
+    for name in columns_name:
+        if name == 'org':
+            print("❌ 'org' 세트는 삭제할 수 없습니다.")
+            continue
+        if name == current_set:
+            print(f"❌ 현재 활성화된 '{name}' 세트는 삭제할 수 없습니다.")
+            print("💡 먼저 다른 세트로 변경하거나 원본으로 복원하세요.")
+            continue
+        if name in self.attrs['columns_extra']:
+            del self.attrs['columns_extra'][name]
+            print(f"✅ 컬럼 세트 '{name}' 삭제 완료")
+        else:
+            print(f"❌ '{name}' 컬럼 세트를 찾을 수 없습니다.")
