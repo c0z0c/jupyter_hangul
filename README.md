@@ -4,6 +4,8 @@
 
 Jupyter Notebook과 Google Colab에서 한글 폰트 설정 및 pandas 확장 기능을 제공하는 모듈입니다.
 
+https://youtu.be/8kfbuseTN-A
+
 ## 🎯 빠른 사용법
 
 ```python
