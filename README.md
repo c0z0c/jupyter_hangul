@@ -9,7 +9,7 @@ https://youtu.be/8kfbuseTN-A
 ## 🎯 빠른 사용법
 
 ```python
-import helper.c0z0c.dev as helper
+import helper_c0z0c_dev as helper
 helper.setup()  # 한번에 모든 설정 완료
 ```
 
@@ -35,20 +35,20 @@ helper.setup()  # 한번에 모든 설정 완료
 
 ```python
 # Jupyter Notebook 또는 Google Colab에서 실행
-!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper.c0z0c.dev.py
+!wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py
 ```
 
 ### 2. 한번에 모든 설정 완료
 
 ```python
-import helper.c0z0c.dev as helper
+import helper_c0z0c_dev as helper
 helper.setup()  # 폰트 다운로드 + 로딩 + pandas 확장 기능 모두 설정
 ```
 
 ### 3. 개별 설정 (선택사항)
 
 ```python
-import helper.c0z0c.dev as helper
+import helper_c0z0c_dev as helper
 
 # 폰트 다운로드
 helper.font_download()
@@ -60,30 +60,27 @@ helper.load_font()
 helper.set_pandas_extension()
 ```
 
-import helper_c0z0c_dev as helper
-
 ### 한글 폰트 설정
 
 ```python
 import matplotlib.pyplot as plt
-import helper.c0z0c.dev as helper
+import helper_c0z0c_dev as helper
 !wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py
 
 helper.setup()  # 한글 폰트 자동 설정
 
 # 이제 matplotlib에서 한글 사용 가능
-import helper_c0z0c_dev as helper
 plt.title("한글 제목")
 plt.xlabel("X축 레이블")
 plt.ylabel("Y축 레이블")
 plt.show()
 ```
-import helper_c0z0c_dev as helper
+
 ### pandas 확장 기능
 
 ```python
 import pandas as pd
-import helper.c0z0c.dev as helper
+import helper_c0z0c_dev as helper
 
 helper.setup()
 
@@ -93,7 +90,7 @@ df = pd.DataFrame({
     'name': ['홍길동', '김철수', '이영희'],
     'age': [25, 30, 35]
 })
-import helper_c0z0c_dev as helper
+
 # 컬럼 설명 설정
 df.set_head_att({
     'id': 'ID',
@@ -108,7 +105,6 @@ df.head_att(out='str')     # 문자열 형식
 
 # Series도 지원
 series = df['name']
-import helper_c0z0c_dev as helper
 series.head_att()
 ```
 
