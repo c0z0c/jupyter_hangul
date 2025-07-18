@@ -119,8 +119,16 @@ helper.check_font_status()    # 현재 폰트 상태 확인
 ### 편의 함수들
 
 ```python
-# 파일 읽기 (Colab/로컬 자동 인식)
+# 파일 읽기 (Colab/로컬 자동 인식, pandas.read_csv의 모든 옵션 지원)
 df = helper.pd_read_csv('data.csv')
+df = helper.pd_read_csv('data.csv', encoding='utf-8', sep=';')
+
+# 다양한 입력 타입 지원
+df = helper.pd_read_csv('data.csv')                    # 로컬 파일 경로 (자동 변환)
+df = helper.pd_read_csv('https://example.com/data.csv') # URL (그대로 전달)
+df = helper.pd_read_csv(file_object)                   # 파일 객체
+from io import StringIO
+df = helper.pd_read_csv(StringIO(csv_string))          # StringIO 객체
 
 # 라이브러리 도움말 검색
 helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검색
@@ -142,7 +150,10 @@ helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검�
 
 ### 편의 함수
 
-- `pd_read_csv(path)`: Colab/로컬 환경에 맞는 파일 읽기
+- `pd_read_csv(filepath_or_buffer, **kwargs)`: 
+  - Colab/로컬 환경에 맞는 파일 읽기
+  - pandas.read_csv의 모든 매개변수 지원
+  - 로컬 파일 경로만 자동 변환, URL/파일 객체는 그대로 전달
 - `dir_start(object, cmd)`: 객체의 메서드/속성 검색
 
 ### pandas 확장 메서드

@@ -100,8 +100,29 @@ series.head_att(out='html')
 
 ### 파일 읽기 함수
 ```python
-# Colab/로컬 자동 감지
+# 기본 사용법 (Colab/로컬 자동 감지)
 df = helper.pd_read_csv('data.csv')
+
+# pandas.read_csv의 모든 옵션 지원
+df = helper.pd_read_csv('data.csv', encoding='utf-8', sep=',')
+df = helper.pd_read_csv('한글파일.csv', encoding='cp949')
+
+# 다양한 입력 타입 지원
+# 1) 로컬 파일 경로 (Colab에서 자동 경로 변환)
+df = helper.pd_read_csv('data/sample.csv')
+
+# 2) URL (그대로 전달, 경로 변환 안됨)
+df = helper.pd_read_csv('https://example.com/data.csv')
+df = helper.pd_read_csv('http://example.com/data.csv')
+
+# 3) 파일 객체 (그대로 전달)
+with open('data.csv', 'r') as f:
+    df = helper.pd_read_csv(f)
+
+# 4) StringIO 객체 (그대로 전달)
+from io import StringIO
+csv_string = "이름,나이\n김철수,25\n이영희,30"
+df = helper.pd_read_csv(StringIO(csv_string))
 ```
 
 ## ❓ 자주 묻는 질문
@@ -160,7 +181,7 @@ korean_fonts = [f for f in fonts if 'Nanum' in f or 'Gothic' in f or 'Barun' in 
 print(f"한글 폰트: {korean_fonts}")
 ```
 
-### 4. 환경별 경로 확인
+### 4. 환경별 경로 확인 및 파일 읽기
 ```python
 # 현재 환경 확인
 if helper.is_colab:
@@ -169,6 +190,20 @@ if helper.is_colab:
 else:
     print("로컬 환경")
     print("현재 디렉토리 사용")
+
+# 파일 읽기 테스트
+# 로컬 파일 경로만 자동 변환됨
+df1 = helper.pd_read_csv('test.csv')  # 자동 경로 변환
+
+# URL은 경로 변환 안됨 (그대로 전달)
+df2 = helper.pd_read_csv('https://raw.githubusercontent.com/user/repo/data.csv')
+
+# 직접 경로 지정 (경로 변환 안됨)
+df3 = helper.pd_read_csv('/content/drive/MyDrive/data.csv')
+
+# 파일 객체 (그대로 전달)
+with open('/content/data.csv', 'r') as f:
+    df4 = helper.pd_read_csv(f, encoding='utf-8')
 ```
 
 ## 📞 지원

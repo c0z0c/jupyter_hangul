@@ -11,7 +11,8 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
     helper.set_pandas_extension()  # pandas 확장 기능
 
 📁 파일 읽기:
-    df = helper.pd_read_csv("파일명.csv")  # Colab/로컬 자동 감지
+    df = helper.pd_read_csv("파일명.csv")          # 문자열 경로 (자동 변환)
+    df = helper.pd_read_csv(file_obj, encoding='utf-8')  # 파일 객체/URL 등
 
 🔍 유틸리티:
     helper.dir_start(객체, "접두사")  # 메서드 검색
@@ -22,8 +23,8 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
     - 문제가 지속되면 런타임 재시작 후 helper.setup() 다시 실행
 
 작성자: 김명환
-날짜: 2025.07.12
-버전: 2.1
+날짜: 2025.07.18
+버전: 2.2
 """
 
 import os
@@ -190,44 +191,78 @@ def load_font():
 pd.set_option("display.max_rows", 30)
 pd.set_option("display.max_columns", 100)
 
-def pd_read_csv(path):
+def pd_read_csv(filepath_or_buffer, **kwargs):
     """
     Colab/로컬 환경에 맞춰 CSV 파일을 읽어옵니다.
     
     Parameters:
     -----------
-    path : str
-        읽어올 파일 경로 (예: "data/test.csv")
+    filepath_or_buffer : str, path object, file-like object
+        읽어올 파일 경로, URL, 파일 객체 등 (pd.read_csv와 동일)
+        - str 타입이고 로컬 파일 경로일 경우: Colab 환경에서 자동으로 경로 변환
+        - URL (http://, https://, ftp://, file://): 그대로 pd.read_csv에 전달
+        - 다른 타입일 경우: 그대로 pd.read_csv에 전달
+    **kwargs : dict
+        pd.read_csv의 추가 매개변수들
     
     Returns:
     --------
     pandas.DataFrame : 읽어온 데이터프레임
-    """
-    if is_colab:
-        full_path = f"/content/drive/MyDrive/{path}"
-        print(f"🔍 Colab 환경 - 파일 경로: {full_path}")
-    else:
-        full_path = path
-        print(f"🔍 로컬 환경 - 파일 경로: {full_path}")
     
-    try:
-        if not os.path.exists(full_path):
-            print(f"❌ 파일을 찾을 수 없습니다: {full_path}")
-            if is_colab:
-                print("💡 Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
-            else:
-                print("💡 현재 디렉토리 기준으로 파일 경로를 확인하세요.")
+    Examples:
+    ---------
+    >>> # 로컬 파일 (환경별 자동 변환)
+    >>> df = helper.pd_read_csv('data.csv')
+    >>> 
+    >>> # URL (그대로 전달)
+    >>> df = helper.pd_read_csv('https://example.com/data.csv')
+    >>> 
+    >>> # 파일 객체 (그대로 전달)
+    >>> with open('data.csv') as f:
+    >>>     df = helper.pd_read_csv(f)
+    """
+    # 문자열 경로일 경우에만 경로 변환 처리 (URL 제외)
+    if isinstance(filepath_or_buffer, str) and not filepath_or_buffer.startswith(('http://', 'https://', 'ftp://', 'file://')):
+        if is_colab:
+            full_path = f"/content/drive/MyDrive/{filepath_or_buffer}"
+            print(f"🔍 Colab 환경 - 파일 경로: {full_path}")
+        else:
+            full_path = filepath_or_buffer
+            print(f"🔍 로컬 환경 - 파일 경로: {full_path}")
+        
+        try:
+            if not os.path.exists(full_path):
+                print(f"❌ 파일을 찾을 수 없습니다: {full_path}")
+                if is_colab:
+                    print("💡 Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
+                else:
+                    print("💡 현재 디렉토리 기준으로 파일 경로를 확인하세요.")
+                return None
+            
+            df = pd.read_csv(full_path, **kwargs)
+            file_size = os.path.getsize(full_path)
+            print(f"✅ 파일 읽기 성공: {full_path}")
+            print(f"📊 데이터 크기: {df.shape[0]}행 × {df.shape[1]}열 ({file_size:,} bytes)")
+            return df
+            
+        except Exception as e:
+            print(f"❌ 파일 읽기 실패: {str(e)}")
             return None
-        
-        df = pd.read_csv(full_path)
-        file_size = os.path.getsize(full_path)
-        print(f"✅ 파일 읽기 성공: {full_path}")
-        print(f"📊 데이터 크기: {df.shape[0]}행 × {df.shape[1]}열 ({file_size:,} bytes)")
-        return df
-        
-    except Exception as e:
-        print(f"❌ 파일 읽기 실패: {str(e)}")
-        return None
+    else:
+        # 문자열이 아니거나 URL인 경우 (파일 객체, URL 등) 그대로 전달
+        try:
+            if isinstance(filepath_or_buffer, str):
+                print(f"🔍 URL로 직접 읽기: {filepath_or_buffer}")
+            else:
+                print(f"🔍 파일 객체 등으로 직접 읽기: {type(filepath_or_buffer)}")
+            df = pd.read_csv(filepath_or_buffer, **kwargs)
+            print(f"✅ 파일 읽기 성공")
+            print(f"📊 데이터 크기: {df.shape[0]}행 × {df.shape[1]}열")
+            return df
+            
+        except Exception as e:
+            print(f"❌ 파일 읽기 실패: {str(e)}")
+            return None
 
 def dir_start(object, cmd):
     """라이브러리 도움말을 검색합니다."""
