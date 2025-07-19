@@ -24,7 +24,7 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
 작성자: 김명환
 날짜: 2025.07.18
-버전: 2.2
+버전: 2.1.5
 """
 
 import os
@@ -34,6 +34,7 @@ import pandas as pd
 import seaborn as sns
 
 # 전역 변수
+__version__ = "2.1.5"
 font_path = ""
 is_colab = False
 
