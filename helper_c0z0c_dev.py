@@ -24,7 +24,7 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
 작성자: 김명환
 날짜: 2025.07.18
-버전: 2.1.5
+버전: 2.1.8
 """
 
 import os
@@ -34,7 +34,7 @@ import pandas as pd
 import seaborn as sns
 
 # 전역 변수
-__version__ = "2.1.5"
+__version__ = "2.1.8"
 font_path = ""
 is_colab = False
 
@@ -52,6 +52,26 @@ def _get_text_width(text):
     if text is None:
         return 0
     return sum(2 if ord(char) >= 0x1100 else 1 for char in str(text))
+
+def _format_value(value):
+    """값을 포맷팅합니다. 실수형은 소수점 이하 4자리로 반올림"""
+    try:
+        # 배열이나 시리즈인 경우 문자열로 변환
+        if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
+            return str(value)
+        
+        # pandas NA 체크 (스칼라 값에만 적용)
+        if pd.isna(value):
+            return str(value)
+        elif isinstance(value, (int, np.integer)):
+            return str(value)
+        elif isinstance(value, (float, np.floating)):
+            return f"{value:.4f}".rstrip('0').rstrip('.')
+        else:
+            return str(value)
+    except (ValueError, TypeError):
+        # 예외 발생 시 안전하게 문자열로 변환
+        return str(value)
 
 def font_download():
     """폰트를 다운로드하거나 설치합니다."""
@@ -475,7 +495,7 @@ def _calculate_column_widths(df_display, labels):
         if len(df_display) == 0:
             max_data_width = 0
         else:
-            max_data_width = max(_get_text_width(str(val)) for val in df_display[col])
+            max_data_width = max(_get_text_width(_format_value(val)) for val in df_display[col])
         
         # 각 요소의 최대 폭 계산
         max_width = max(
@@ -520,7 +540,7 @@ def pd_head_att(self, rows=5, out=None):
     >>> df.head_att(rows='all', out='print')  # 전체 데이터 출력 (콘솔)
     """
     labels = self.attrs.get("column_descriptions", {})
-    
+
     # 출력할 데이터 결정
     if isinstance(rows, str) and rows.lower() == "all":
         df_display = self
@@ -533,16 +553,73 @@ def pd_head_att(self, rows=5, out=None):
             df_display = self.head(rows)
     else:
         df_display = self.head(5)
-    
-    # 출력 방식 결정 (기본값: print)
-    if out is None or out.lower() == 'print':
-        return self._print_head_att(df_display, labels)
-    elif out.lower() == 'html':
-        return self._html_head_att(df_display, labels)
-    elif out.lower() in ['str', 'string']:
-        return self._string_head_att(df_display, labels)
+
+    # 보조 컬럼명 출력 조건
+    # 1. column_descriptions가 완전히 비어 있으면 보조 컬럼명 출력하지 않음 (오리지널 컬럼명만 한 번 출력)
+    # 2. column_descriptions가 비어 있지 않고 특정 컬럼만 비어 있으면 기존과 동일하게 처리
+    if not labels:
+        # 보조 컬럼명 없이 오리지널 컬럼명만 한 번 출력
+        def _print_original_only(df_display):
+            # 영문 헤더 출력 (오른쪽 정렬)
+            column_widths = _calculate_column_widths(df_display, {})
+            index_width = column_widths[0]
+            data_widths = column_widths[1:]
+            english_parts = []
+            english_parts.append(_align_text('', index_width, 'right'))
+            for col, width in zip(df_display.columns, data_widths):
+                english_parts.append(_align_text(col, width, 'right'))
+            print(''.join(english_parts))
+            # 데이터 출력
+            for idx, row in df_display.iterrows():
+                row_parts = []
+                row_parts.append(_align_text(str(idx), index_width, 'right'))
+                for val, width in zip(row, data_widths):
+                    row_parts.append(_align_text(_format_value(val), width, 'right'))
+                print(''.join(row_parts))
+        if out is None or out.lower() == 'print':
+            _print_original_only(df_display)
+            return None
+        elif out.lower() == 'html':
+            # HTML 헤더는 오리지널 컬럼명만 출력
+            df_copy = df_display.copy()
+            # 실수형 값들을 포맷팅
+            for col in df_copy.columns:
+                df_copy[col] = df_copy[col].apply(_format_value)
+            df_copy.columns = list(df_display.columns)
+            from IPython.display import HTML
+            return HTML(df_copy.to_html(escape=False))
+        elif out.lower() in ['str', 'string']:
+            # 문자열 형태로 오리지널 컬럼명만 출력
+            column_widths = _calculate_column_widths(df_display, {})
+            result = ""
+            english_row = ""
+            for i, col in enumerate(df_display.columns):
+                english_row += _align_text(col, column_widths[i])
+            result += english_row + "\n"
+            for idx, row in df_display.iterrows():
+                data_row = ""
+                for i, val in enumerate(row):
+                    if i == 0:
+                        text = str(idx)
+                        formatted_val = _format_value(val)
+                        data_row += _align_text(text, column_widths[i] - _get_text_width(formatted_val))
+                        data_row += formatted_val
+                    else:
+                        data_row += _align_text(_format_value(val), column_widths[i])
+                result += data_row + "\n"
+            return result.rstrip()
+        else:
+            raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
     else:
-        raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
+        # 기존 로직 (보조 컬럼명 일부만 비어 있으면 기존과 동일하게 처리)
+        if out is None or out.lower() == 'print':
+            return self._print_head_att(df_display, labels)
+        elif out.lower() == 'html':
+            return self._html_head_att(df_display, labels)
+        elif out.lower() in ['str', 'string']:
+            return self._string_head_att(df_display, labels)
+        else:
+            raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
 
 def _print_head_att(self, df_display, labels):
     """print 형태로 출력 (pandas 기본 스타일)"""
@@ -574,7 +651,7 @@ def _print_head_att(self, df_display, labels):
         row_parts.append(_align_text(str(idx), index_width, 'right'))
         # 데이터 출력 (오른쪽 정렬)
         for val, width in zip(row, data_widths):
-            row_parts.append(_align_text(str(val), width, 'right'))
+            row_parts.append(_align_text(_format_value(val), width, 'right'))
         print(''.join(row_parts))
 
 def _html_head_att(self, df_display, labels):
@@ -587,6 +664,9 @@ def _html_head_att(self, df_display, labels):
             header.append(col)
     
     df_copy = df_display.copy()
+    # 실수형 값들을 포맷팅
+    for col in df_copy.columns:
+        df_copy[col] = df_copy[col].apply(_format_value)
     df_copy.columns = header
     
     from IPython.display import HTML
@@ -617,10 +697,11 @@ def _string_head_att(self, df_display, labels):
         for i, val in enumerate(row):
             if i == 0:
                 text = str(idx)
-                data_row += _align_text(text, column_widths[i] - _get_text_width(str(val)))
-                data_row += str(val)
+                formatted_val = _format_value(val)
+                data_row += _align_text(text, column_widths[i] - _get_text_width(formatted_val))
+                data_row += formatted_val
             else:
-                data_row += _align_text(str(val), column_widths[i])
+                data_row += _align_text(_format_value(val), column_widths[i])
         result += data_row + "\n"
     
     return result.rstrip()
@@ -651,7 +732,7 @@ def series_head_att(self, rows=5, out=None):
         max_index_width = max(index_widths) if index_widths else 0
         
         # 데이터 최대 폭 계산
-        data_widths = [_get_text_width(str(val)) for val in series_display]
+        data_widths = [_get_text_width(_format_value(val)) for val in series_display]
         max_data_width = max(data_widths) if data_widths else 0
         
         # 헤더 폭 계산
@@ -671,13 +752,15 @@ def series_head_att(self, rows=5, out=None):
         
         # 데이터 출력
         for idx, val in series_display.items():
-            data_row = _align_text(str(idx), index_column_width) + _align_text(str(val), data_column_width)
+            data_row = _align_text(str(idx), index_column_width) + _align_text(_format_value(val), data_column_width)
             print(data_row)
         
         return None
     
     elif out.lower() == 'html':
         df = series_display.to_frame()
+        # 실수형 값들을 포맷팅
+        df.iloc[:, 0] = df.iloc[:, 0].apply(_format_value)
         
         if series_name in labels and labels[series_name]:
             df.columns = [f"{labels[series_name]}<br>{series_name}"]
@@ -693,7 +776,7 @@ def series_head_att(self, rows=5, out=None):
         max_index_width = max(index_widths) if index_widths else 0
         
         # 데이터 최대 폭 계산
-        data_widths = [_get_text_width(str(val)) for val in series_display]
+        data_widths = [_get_text_width(_format_value(val)) for val in series_display]
         max_data_width = max(data_widths) if data_widths else 0
         
         # 헤더 폭 계산
@@ -716,7 +799,7 @@ def series_head_att(self, rows=5, out=None):
         
         # 데이터 생성
         for idx, val in series_display.items():
-            data_row = _align_text(str(idx), index_column_width) + _align_text(str(val), data_column_width)
+            data_row = _align_text(str(idx), index_column_width) + _align_text(_format_value(val), data_column_width)
             result += data_row + "\n"
         
         return result.rstrip()
