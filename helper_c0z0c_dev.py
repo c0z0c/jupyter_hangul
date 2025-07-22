@@ -1,20 +1,20 @@
 """
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
-🚀 기본 사용법:
+ 기본 사용법:
     import helper.c0z0c.dev as helper
     helper.setup()  # 한번에 모든 설정 완료
 
-🔧 개별 실행:
+개별 실행:
     helper.font_download()      # 폰트 다운로드
     helper.load_font()          # 폰트 로딩
     helper.set_pandas_extension()  # pandas 확장 기능
 
-📁 파일 읽기:
+파일 읽기:
     df = helper.pd_read_csv("파일명.csv")          # 문자열 경로 (자동 변환)
     df = helper.pd_read_csv(file_obj, encoding='utf-8')  # 파일 객체/URL 등
 
-🔍 유틸리티:
+유틸리티:
     helper.dir_start(객체, "접두사")  # 메서드 검색
     df.head_att()  # 한글 컬럼 설명 출력
 
@@ -26,7 +26,7 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
     helper.cache_info()                                     # 캐시 정보
     helper.cache_clear()                                    # 캐시 초기화
 
-�💡 Colab 사용 시 주의사항:
+�Colab 사용 시 주의사항:
     - 세션 재시작 후 Google Drive 인증 오류 발생 시 런타임 재시작 필요
     - 문제가 지속되면 런타임 재시작 후 helper.setup() 다시 실행
 
@@ -91,10 +91,10 @@ def font_download():
         if os.system("dpkg -l | grep fonts-nanum") == 0:
             print("fonts-nanum이 이미 설치되어 있습니다.")
             return
-        print("📥 install fonts-nanum")
+        print("install fonts-nanum")
         subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print("📥 프로세서가 종료 됩니다. 잠시후 다시 시도 하세요")
+        print("프로세서가 종료 됩니다. 잠시후 다시 시도 하세요")
         subprocess.run(['sudo', 'fc-cache', '-fv'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
@@ -106,11 +106,11 @@ def font_download():
         os.makedirs(font_dir, exist_ok=True)
         font_path = os.path.join(font_dir, "NanumGothic.ttf")
         if not os.path.exists(font_path):
-            print("📥 Downloading NanumGothic.ttf...")
+            print("Downloading NanumGothic.ttf...")
             urllib.request.urlretrieve(font_url, font_path)
-            print("✅ Download complete.")
+            print("Download complete.")
         else:
-            print("✔️ Font already exists.")
+            print("Font already exists.")
         print(f"font_path={font_path}")
 
 def _colab_font_reinstall():
@@ -119,15 +119,15 @@ def _colab_font_reinstall():
     import time
     from IPython.display import display, Markdown
     
-    print("📋 Colab 환경에서 폰트 재설치를 진행합니다...")
+    print("Colab 환경에서 폰트 재설치를 진행합니다...")
     try:
         # 기존 폰트 패키지 완전 제거
-        print("🗑️  기존 fonts-nanum 패키지 제거 중...")
+        print("기존 fonts-nanum 패키지 제거 중...")
         subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # 폰트 캐시 완전 정리
-        print("🧹 폰트 캐시 완전 정리 중...")
+        print("폰트 캐시 완전 정리 중...")
         subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
@@ -136,38 +136,38 @@ def _colab_font_reinstall():
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # 패키지 목록 업데이트
-        print("📦 패키지 목록 업데이트 중...")
+        print("패키지 목록 업데이트 중...")
         subprocess.run(['sudo', 'apt-get', 'update', '-qq'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # 폰트 재설치
-        print("📥 fonts-nanum 재설치 중...")
+        print("fonts-nanum 재설치 중...")
         subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         # 폰트 캐시 재구성
-        print("🔧 폰트 캐시 재구성 중...")
+        print("폰트 캐시 재구성 중...")
         subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         restart_guide = """
-# 🔄 폰트 재설치 완료
+# 폰트 재설치 완료
 
 폰트 재설치가 완료되었습니다. **프로세서를 재시작**하고 다시 시도하세요.
 
-## 🚀 재시작 방법
+## 재시작 방법
 1. **메뉴 > 런타임 > 런타임 다시 시작** 클릭
 2. 재시작 후 **helper.setup()** 다시 실행
 """
         display(Markdown(restart_guide))
         
-        print("🔄 3초 후 프로세서를 재시작합니다...")
+        print("3초 후 프로세서를 재시작합니다...")
         time.sleep(3)
         os.kill(os.getpid(), 9)
         
     except Exception as reinstall_error:
-        print(f"❌ 재설치 중 오류 발생: {str(reinstall_error)}")
-        print("🔄 수동으로 런타임을 재시작하고 다시 시도하세요.")
+        print(f"재설치 중 오류 발생: {str(reinstall_error)}")
+        print("수동으로 런타임을 재시작하고 다시 시도하세요.")
 
 def load_font():
     """폰트를 로딩하고 설정합니다."""
@@ -177,43 +177,43 @@ def load_font():
 
     try:
         if _in_colab():
-            print("🔍 Colab 환경에서 폰트 설정 중...")
+            print("Colab 환경에서 폰트 설정 중...")
             is_colab = True
             
             # Google Drive 마운트 시도 (선택적)
             try:
-                print("📁 Google Drive 연결 시도 중...")
+                print("Google Drive 연결 시도 중...")
                 from google.colab import drive
                 drive.mount("/content/drive", force_remount=True)
-                print("✅ Google Drive 연결 성공")
+                print("Google Drive 연결 성공")
             except Exception as drive_error:
-                print(f"⚠️  Google Drive 연결 실패: {str(drive_error)}")
+                print(f"Google Drive 연결 실패: {str(drive_error)}")
                 print("� Google Drive 없이 계속 진행합니다...")
             
             plt.rc("font", family="NanumBarunGothic")
             plt.rcParams['axes.unicode_minus'] = False
-            display(Markdown("**💻 실행 환경**: Colab\n✅ 한글 폰트가 성공적으로 설정되었습니다."))
+            display(Markdown("**실행 환경**: Colab\n한글 폰트가 성공적으로 설정되었습니다."))
         else:
             is_colab = False
             if plt.rcParams["font.family"] == "NanumGothic":
-                print("✔️ 한글 폰트가 설치 되어 있습니다.\n추가 작업을 하지 않습니다.")
+                print("한글 폰트가 설치 되어 있습니다.\n추가 작업을 하지 않습니다.")
                 return
 
             try:
                 fm.fontManager.addfont(font_path)
                 plt.rcParams["font.family"] = "NanumGothic"
                 plt.rcParams['axes.unicode_minus'] = False
-                display(Markdown("**💻 실행 환경**: 로컬\n✅ 한글 폰트가 성공적으로 설정되었습니다."))
+                display(Markdown("**실행 환경**: 로컬\n한글 폰트가 성공적으로 설정되었습니다."))
             except Exception as e:
-                display(Markdown(f"**❌ 오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))
+                display(Markdown(f"**오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))
     except Exception as e:
-        display(Markdown(f"**❌ 오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))   
-        print("🔄 폰트 관련 오류 발생 - 재설치를 시도합니다...")
+        display(Markdown(f"**오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))   
+        print(" 폰트 관련 오류 발생 - 재설치를 시도합니다...")
         
         if _in_colab():
             _colab_font_reinstall()
         else:
-            print("💻 로컬 환경에서는 폰트 파일을 다시 다운로드하세요.")
+            print("로컬 환경에서는 폰트 파일을 다시 다운로드하세요.")
             print("helper.font_download()를 다시 실행해보세요.")
 
 # pandas 옵션 설정
@@ -254,43 +254,43 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
     if isinstance(filepath_or_buffer, str) and not filepath_or_buffer.startswith(('http://', 'https://', 'ftp://', 'file://')):
         if is_colab:
             full_path = f"/content/drive/MyDrive/{filepath_or_buffer}"
-            print(f"🔍 Colab 환경 - 파일 경로: {full_path}")
+            print(f"Colab 환경 - 파일 경로: {full_path}")
         else:
             full_path = filepath_or_buffer
-            print(f"🔍 로컬 환경 - 파일 경로: {full_path}")
+            print(f"로컬 환경 - 파일 경로: {full_path}")
         
         try:
             if not os.path.exists(full_path):
-                print(f"❌ 파일을 찾을 수 없습니다: {full_path}")
+                print(f"파일을 찾을 수 없습니다: {full_path}")
                 if is_colab:
-                    print("💡 Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
+                    print(" Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
                 else:
-                    print("💡 현재 디렉토리 기준으로 파일 경로를 확인하세요.")
+                    print(" 현재 디렉토리 기준으로 파일 경로를 확인하세요.")
                 return None
             
             df = pd.read_csv(full_path, **kwargs)
             file_size = os.path.getsize(full_path)
-            print(f"✅ 파일 읽기 성공: {full_path}")
-            print(f"📊 데이터 크기: {df.shape[0]}행 × {df.shape[1]}열 ({file_size:,} bytes)")
+            print(f"파일 읽기 성공: {full_path}")
+            print(f"데이터 크기: {df.shape[0]}행 × {df.shape[1]}열 ({file_size:,} bytes)")
             return df
             
         except Exception as e:
-            print(f"❌ 파일 읽기 실패: {str(e)}")
+            print(f"파일 읽기 실패: {str(e)}")
             return None
     else:
         # 문자열이 아니거나 URL인 경우 (파일 객체, URL 등) 그대로 전달
         try:
             if isinstance(filepath_or_buffer, str):
-                print(f"🔍 URL로 직접 읽기: {filepath_or_buffer}")
+                print(f"URL로 직접 읽기: {filepath_or_buffer}")
             else:
-                print(f"🔍 파일 객체 등으로 직접 읽기: {type(filepath_or_buffer)}")
+                print(f"파일 객체 등으로 직접 읽기: {type(filepath_or_buffer)}")
             df = pd.read_csv(filepath_or_buffer, **kwargs)
-            print(f"✅ 파일 읽기 성공")
-            print(f"📊 데이터 크기: {df.shape[0]}행 × {df.shape[1]}열")
+            print(f"파일 읽기 성공")
+            print(f"데이터 크기: {df.shape[0]}행 × {df.shape[1]}열")
             return df
             
         except Exception as e:
-            print(f"❌ 파일 읽기 실패: {str(e)}")
+            print(f"파일 읽기 실패: {str(e)}")
             return None
 
 def dir_start(object, cmd):
@@ -337,26 +337,27 @@ def set_pandas_extension():
     setattr(pd.Series, "_convert_columns", _convert_columns)
     setattr(pd.Series, "_update_column_descriptions", _update_column_descriptions)
     
-    print("✅ pandas 확장 기능이 성공적으로 설정되었습니다.")
+    print("pandas 확장 기능이 성공적으로 설정되었습니다.")
 
 def setup():
     """한번에 모든 설정 완료"""
-    print("🚀 Jupyter/Colab 한글 환경 설정을 시작합니다...")
+    print("helper 모듈을 로드했습니다.")
+    print("Jupyter/Colab 한글 환경 설정을 시작합니다...")
     
     try:
         font_download()
         load_font()
         set_pandas_extension()
         
-        print("🎉 모든 설정이 완료되었습니다!")
-        print("✅ 사용 가능한 기능:")
+        print("모든 설정이 완료되었습니다!")
+        print("사용 가능한 기능:")
         print("   - 한글 폰트 지원")
         print("   - helper.pd_read_csv(): 파일 읽기")
         print("   - DataFrame.head_att(): 한글 컬럼 설명")
         print("   - helper.cache_*(): 데이터 캐시 기능")
         
     except Exception as e:
-        print(f"❌ 설정 중 오류: {str(e)}")
+        print(f"설정 중 오류: {str(e)}")
 
 # 캐시 관련 helper API 함수들
 def cache_key(*datas, **kwargs):
@@ -527,7 +528,7 @@ def cache_clear(cache_file=None):
     >>> helper.cache_clear()  # 모든 캐시 삭제
     """
     DataCatch.clear_cache(cache_file)
-    print("🧹 캐시가 전체 초기화되었습니다.")
+    print("캐시가 전체 초기화되었습니다.")
 
 def cache_info(cache_file=None):
     """
@@ -685,9 +686,9 @@ def remove_head_att(self, key):
     for k in key:
         if k in self.attrs["column_descriptions"]:
             self.attrs["column_descriptions"].pop(k)
-            print(f"✅ 컬럼 설명 '{k}' 삭제 완료")
+            print(f"컬럼 설명 '{k}' 삭제 완료")
         else:
-            print(f"❌ '{k}' 컬럼 설명을 찾을 수 없습니다.")
+            print(f"'{k}' 컬럼 설명을 찾을 수 없습니다.")
 
 def clear_head_att(self):
     """모든 컬럼 설명을 초기화합니다."""
@@ -1142,8 +1143,8 @@ def _set_head_ext_bulk(self, columns_name, columns_extra):
         'columns': columns_extra.copy()
     }
     
-    print(f"✅ 컬럼 세트 '{columns_name}' 설정 완료")
-    print(f"📊 {len(columns_extra)}개 컬럼 매핑됨")
+    print(f"컬럼 세트 '{columns_name}' 설정 완료")
+    print(f"{len(columns_extra)}개 컬럼 매핑됨")
 
 def _set_head_ext_individual(self, columns_name, column_key, column_value):
     """개별 컬럼 설정 (새로운 방식)"""
@@ -1181,12 +1182,12 @@ def _set_head_ext_individual(self, columns_name, column_key, column_value):
     self.attrs['columns_extra'][columns_name]['columns'][column_key] = column_value
     
     if old_value is None:
-        print(f"✅ 컬럼 세트 '{columns_name}'에 '{column_key}' → '{column_value}' 추가")
+        print(f"컬럼 세트 '{columns_name}'에 '{column_key}' → '{column_value}' 추가")
     else:
-        print(f"✅ 컬럼 세트 '{columns_name}'에서 '{column_key}': '{old_value}' → '{column_value}' 수정")
+        print(f" 컬럼 세트 '{columns_name}'에서 '{column_key}': '{old_value}' → '{column_value}' 수정")
     
     total_mappings = len(self.attrs['columns_extra'][columns_name]['columns'])
-    print(f"📊 현재 '{columns_name}' 세트 총 매핑 수: {total_mappings}개")
+    print(f" 현재 '{columns_name}' 세트 총 매핑 수: {total_mappings}개")
 
 def set_head_column(self, columns_name):
     """
@@ -1233,8 +1234,8 @@ def set_head_column(self, columns_name):
     
     self._update_column_descriptions(current_set, columns_name)
     
-    print(f"✅ 컬럼명 변경: '{current_set}' → '{columns_name}'")
-    print(f"📋 현재 컬럼: {list(self.columns)}")
+    print(f" 컬럼명 변경: '{current_set}' → '{columns_name}'")
+    print(f" 현재 컬럼: {list(self.columns)}")
 
 def _convert_columns(self, current_set, target_set, target_columns):
     """컬럼명 변환 로직"""
@@ -1332,13 +1333,13 @@ def list_head_ext(self):
     self._init_column_attrs()
     
     if not self.attrs['columns_extra']:
-        print("📋 등록된 컬럼 세트가 없습니다.")
+        print(" 등록된 컬럼 세트가 없습니다.")
         return
     
     current_set = self.get_current_column_set()
     max_name_length = max(len(name) for name in self.attrs['columns_extra'].keys())
     
-    print("📋 등록된 컬럼 세트:")
+    print(" 등록된 컬럼 세트:")
     for name, info in self.attrs['columns_extra'].items():
         columns_list = list(info['columns'].values() if name != 'org' else info['columns'].keys())
         status = " (현재)" if name == current_set else ""
@@ -1354,12 +1355,12 @@ def clear_head_ext(self):
         org_columns = list(self.attrs['columns_extra']['org']['columns'].keys())
         self.columns = org_columns
         self.attrs['current_column_set'] = 'org'
-        print("✅ 컬럼명을 원본으로 복원했습니다.")
+        print(" 컬럼명을 원본으로 복원했습니다.")
     
     # org 제외하고 모든 컬럼 세트 초기화
     org_backup = self.attrs['columns_extra'].get('org', {})
     self.attrs['columns_extra'] = {'org': org_backup}
-    print("🧹 모든 컬럼 세트를 초기화했습니다.")
+    print(" 모든 컬럼 세트를 초기화했습니다.")
 
 def remove_head_ext(self, columns_name):
     """
@@ -1378,17 +1379,17 @@ def remove_head_ext(self, columns_name):
     current_set = self.get_current_column_set()
     for name in columns_name:
         if name == 'org':
-            print("❌ 'org' 세트는 삭제할 수 없습니다.")
+            print(" 'org' 세트는 삭제할 수 없습니다.")
             continue
         if name == current_set:
-            print(f"❌ 현재 활성화된 '{name}' 세트는 삭제할 수 없습니다.")
-            print("💡 먼저 다른 세트로 변경하거나 원본으로 복원하세요.")
+            print(f" 현재 활성화된 '{name}' 세트는 삭제할 수 없습니다.")
+            print(" 먼저 다른 세트로 변경하거나 원본으로 복원하세요.")
             continue
         if name in self.attrs['columns_extra']:
             del self.attrs['columns_extra'][name]
-            print(f"✅ 컬럼 세트 '{name}' 삭제 완료")
+            print(f" 컬럼 세트 '{name}' 삭제 완료")
         else:
-            print(f"❌ '{name}' 컬럼 세트를 찾을 수 없습니다.")
+            print(f" '{name}' 컬럼 세트를 찾을 수 없습니다.")
             
 import hashlib
 import json
@@ -1467,7 +1468,7 @@ class DataCatch:
             cls._save_cache()
             return True
         except Exception as e:
-            print(f"⚠️ 저장 실패: {e}")
+            print(f" 저장 실패: {e}")
             return False
 
     @classmethod
@@ -1483,7 +1484,7 @@ class DataCatch:
             # 저장된 값을 원래 형태로 복원
             return cls._restore_value(cached_value)
         except Exception as e:
-            print(f"⚠️ 복원 실패: {e}")
+            print(f" 복원 실패: {e}")
             return cached_value  # 실패 시 원본 반환
 
     @classmethod
@@ -1544,7 +1545,7 @@ class DataCatch:
                 with open(cls._cache_file, "r", encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
-                print(f"⚠️ 캐시 파일 로드 실패: {e}")
+                print(f" 캐시 파일 로드 실패: {e}")
                 return {}
         return {}
 
@@ -1560,10 +1561,10 @@ class DataCatch:
             with open(cls._cache_file, "w", encoding='utf-8') as f:
                 json.dump(cls._cache, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"⚠️ 캐시 파일 저장 실패: {e}")
-            print(f"💡 경로: {cls._cache_file}")
+            print(f" 캐시 파일 저장 실패: {e}")
+            print(f" 경로: {cls._cache_file}")
             if _in_colab():
-                print("💡 Google Drive가 마운트되지 않았을 수 있습니다.")
+                print(" Google Drive가 마운트되지 않았을 수 있습니다.")
 
     @classmethod
     def clear_cache(cls, cache_file=None):
@@ -1578,7 +1579,7 @@ class DataCatch:
         """캐시 정보 출력"""
         cls._initialize_cache(cache_file)
         env_name = "Colab" if _in_colab() else "로컬"
-        print(f"📊 캐시 정보 ({env_name} 환경):")
+        print(f" 캐시 정보 ({env_name} 환경):")
         print(f"   - 파일: {cls._cache_file}")
         print(f"   - 항목 수: {len(cls._cache)}")
         if os.path.exists(cls._cache_file):
@@ -1595,10 +1596,10 @@ class DataCatch:
         if key in cls._cache:
             del cls._cache[key]
             cls._save_cache()
-            print(f"✅ 키 '{key}' 삭제 완료")
+            print(f" 키 '{key}' 삭제 완료")
             return True
         else:
-            print(f"⚠️ 키 '{key}'를 찾을 수 없습니다")
+            print(f" 키 '{key}'를 찾을 수 없습니다")
             return False
     
     @classmethod
@@ -1611,13 +1612,13 @@ class DataCatch:
             if key in cls._cache:
                 del cls._cache[key]
                 deleted_count += 1
-                print(f"✅ 키 '{key}' 삭제")
+                print(f" 키 '{key}' 삭제")
             else:
-                print(f"⚠️ 키 '{key}' 없음")
+                print(f" 키 '{key}' 없음")
         
         if deleted_count > 0:
             cls._save_cache()
-            print(f"🎯 총 {deleted_count}개 키 삭제 완료")
+            print(f" 총 {deleted_count}개 키 삭제 완료")
         
         return deleted_count
     
