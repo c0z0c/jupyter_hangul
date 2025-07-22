@@ -18,13 +18,21 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
     helper.dir_start(객체, "접두사")  # 메서드 검색
     df.head_att()  # 한글 컬럼 설명 출력
 
-💡 Colab 사용 시 주의사항:
+� 캐시 기능:
+    key = helper.cache_key("model", params, random_state=42)  # 키 생성
+    helper.cache_save(key, model)                           # 모델 저장
+    model = helper.cache_load(key)                          # 모델 로드
+    helper.cache_exists(key)                                # 키 존재 확인
+    helper.cache_info()                                     # 캐시 정보
+    helper.cache_clear()                                    # 캐시 초기화
+
+�💡 Colab 사용 시 주의사항:
     - 세션 재시작 후 Google Drive 인증 오류 발생 시 런타임 재시작 필요
     - 문제가 지속되면 런타임 재시작 후 helper.setup() 다시 실행
 
 작성자: 김명환
-날짜: 2025.07.18
-버전: 2.1.8
+날짜: 2025.07.22
+버전: 2.2.0
 """
 
 import os
@@ -34,7 +42,7 @@ import pandas as pd
 import seaborn as sns
 
 # 전역 변수
-__version__ = "2.1.8"
+__version__ = "2.2.0"
 font_path = ""
 is_colab = False
 
@@ -345,9 +353,228 @@ def setup():
         print("   - 한글 폰트 지원")
         print("   - helper.pd_read_csv(): 파일 읽기")
         print("   - DataFrame.head_att(): 한글 컬럼 설명")
+        print("   - helper.cache_*(): 데이터 캐시 기능")
         
     except Exception as e:
         print(f"❌ 설정 중 오류: {str(e)}")
+
+# 캐시 관련 helper API 함수들
+def cache_key(*datas, **kwargs):
+    """
+    여러 데이터와 키워드 인자를 받아서 고유한 해시키 생성
+    
+    Parameters:
+    -----------
+    *datas : any
+        해시키 생성에 사용할 데이터들
+    **kwargs : any
+        해시키 생성에 사용할 키워드 인자들
+    
+    Returns:
+    --------
+    str : MD5 해시 키
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> key = helper.cache_key("model_lasso", [0.1, 0.2], random_state=42)
+    >>> print(key)  # '1a2b3c4d5e...'
+    """
+    return DataCatch.key(*datas, **kwargs)
+
+def cache_save(key, value, cache_file=None):
+    """
+    데이터를 캐시에 저장
+    
+    Parameters:
+    -----------
+    key : str
+        저장할 때 사용할 키
+    value : any
+        저장할 데이터 (DataFrame, numpy array, 일반 객체 등)
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    bool : 저장 성공 여부
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> model = train_model()
+    >>> key = helper.cache_key("model_v1", params)
+    >>> helper.cache_save(key, model)
+    """
+    return DataCatch.save(key, value, cache_file)
+
+def cache_load(key, cache_file=None):
+    """
+    캐시에서 데이터 로드
+    
+    Parameters:
+    -----------
+    key : str
+        로드할 데이터의 키
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    any or None : 저장된 데이터 또는 None (키가 없을 경우)
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> key = helper.cache_key("model_v1", params)
+    >>> model = helper.cache_load(key)
+    >>> if model:
+    >>>     print("캐시에서 모델 로드됨")
+    """
+    return DataCatch.load(key, cache_file)
+
+def cache_exists(key, cache_file=None):
+    """
+    캐시에 키가 존재하는지 확인
+    
+    Parameters:
+    -----------
+    key : str
+        확인할 키
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    bool : 키 존재 여부
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> key = helper.cache_key("model_v1", params)
+    >>> if helper.cache_exists(key):
+    >>>     model = helper.cache_load(key)
+    """
+    return DataCatch.exists(key, cache_file)
+
+def cache_delete(key, cache_file=None):
+    """
+    캐시에서 특정 키 삭제
+    
+    Parameters:
+    -----------
+    key : str
+        삭제할 키
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    bool : 삭제 성공 여부
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> helper.cache_delete("old_model_key")
+    """
+    return DataCatch.delete(key, cache_file)
+
+def cache_delete_keys(*keys, cache_file=None):
+    """
+    캐시에서 여러 키를 한번에 삭제
+    
+    Parameters:
+    -----------
+    *keys : str
+        삭제할 키들
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    int : 삭제된 키의 개수
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> helper.cache_delete_keys("key1", "key2", "key3")
+    """
+    return DataCatch.delete_keys(*keys, cache_file=cache_file)
+
+def cache_clear(cache_file=None):
+    """
+    캐시 전체 초기화
+    
+    Parameters:
+    -----------
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> helper.cache_clear()  # 모든 캐시 삭제
+    """
+    DataCatch.clear_cache(cache_file)
+    print("🧹 캐시가 전체 초기화되었습니다.")
+
+def cache_info(cache_file=None):
+    """
+    캐시 정보 출력
+    
+    Parameters:
+    -----------
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> helper.cache_info()
+    """
+    DataCatch.cache_info(cache_file)
+
+def cache_list_keys(cache_file=None):
+    """
+    저장된 모든 키 목록 반환
+    
+    Parameters:
+    -----------
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    list : 키 목록
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> keys = helper.cache_list_keys()
+    >>> print(f"저장된 키 개수: {len(keys)}")
+    """
+    return DataCatch.list_keys(cache_file)
+
+def cache_size(cache_file=None):
+    """
+    캐시 크기(항목 수) 반환
+    
+    Parameters:
+    -----------
+    cache_file : str, optional
+        캐시 파일 경로 (기본값: cache.json)
+    
+    Returns:
+    --------
+    int : 캐시에 저장된 항목 수
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> size = helper.cache_size()
+    >>> print(f"캐시 크기: {size}개")
+    """
+    return DataCatch.size(cache_file)
 
 # pandas 확장 기능 함수들
 def set_head_att(self, key_or_dict, value=None):
@@ -1151,3 +1378,228 @@ def remove_head_ext(self, columns_name):
             print(f"✅ 컬럼 세트 '{name}' 삭제 완료")
         else:
             print(f"❌ '{name}' 컬럼 세트를 찾을 수 없습니다.")
+            
+import hashlib
+import json
+import os
+import numpy as np
+import pandas as pd
+from typing import Any
+
+class DataCatch:
+    _default_cache_file = "cache.json"
+    _cache = None
+    _cache_file = None
+    
+    @classmethod
+    def _initialize_cache(cls, cache_file=None):
+        """캐시 초기화 (한 번만 실행)"""
+        if cls._cache is None:
+            cls._cache_file = cache_file or cls._default_cache_file
+            cls._cache = cls._load_cache()
+    
+    @staticmethod
+    def key(*datas, **kwargs):
+        """여러 데이터와 키워드 인자를 받아서 고유한 해시키 생성"""
+        try:
+            # 위치 인자들을 직렬화 가능한 형태로 변환
+            serializable_data = []
+            for d in datas:
+                if isinstance(d, np.ndarray):
+                    serializable_data.append(d.tolist())
+                elif isinstance(d, pd.DataFrame):
+                    serializable_data.append(d.to_dict())
+                elif isinstance(d, pd.Series):
+                    serializable_data.append(d.to_list())
+                elif hasattr(d, '__iter__') and not isinstance(d, (str, bytes)):
+                    # 리스트, 튜플 등 반복 가능한 객체
+                    serializable_data.append(list(d))
+                else:
+                    serializable_data.append(d)
+            
+            # 키워드 인자들을 정렬된 딕셔너리로 추가
+            if kwargs:
+                serializable_data.append(dict(sorted(kwargs.items())))
+            
+            # JSON 문자열로 변환하여 해시 생성
+            data_str = json.dumps(serializable_data, sort_keys=True, default=str)
+            return hashlib.md5(data_str.encode()).hexdigest()
+        except Exception as e:
+            # 직렬화 실패 시 객체의 문자열 표현으로 폴백
+            fallback_str = str(datas) + str(kwargs)
+            return hashlib.md5(fallback_str.encode()).hexdigest()
+        
+    @classmethod
+    def save(cls, key, value, cache_file=None):
+        """값을 직렬화 가능한 형태로 변환하여 저장"""
+        cls._initialize_cache(cache_file)
+        
+        try:
+            # 값을 직렬화 가능한 형태로 변환
+            serializable_value = cls._make_serializable(value)
+            cls._cache[key] = serializable_value
+            cls._save_cache()
+            return True
+        except Exception as e:
+            print(f"⚠️ 저장 실패: {e}")
+            return False
+
+    @classmethod
+    def load(cls, key, cache_file=None):
+        """저장된 값을 원래 형태로 복원하여 반환"""
+        cls._initialize_cache(cache_file)
+        
+        cached_value = cls._cache.get(key, None)
+        if cached_value is None:
+            return None
+        
+        try:
+            # 저장된 값을 원래 형태로 복원
+            return cls._restore_value(cached_value)
+        except Exception as e:
+            print(f"⚠️ 복원 실패: {e}")
+            return cached_value  # 실패 시 원본 반환
+
+    @classmethod
+    def _make_serializable(cls, value):
+        """값을 JSON 직렬화 가능한 형태로 변환"""
+        if isinstance(value, np.ndarray):
+            return {
+                '_type': 'numpy_array',
+                'data': value.tolist(),
+                'dtype': str(value.dtype),
+                'shape': value.shape
+            }
+        elif isinstance(value, pd.DataFrame):
+            return {
+                '_type': 'pandas_dataframe',
+                'data': value.to_dict(),
+                'columns': list(value.columns),
+                'index': list(value.index)
+            }
+        elif isinstance(value, pd.Series):
+            return {
+                '_type': 'pandas_series',
+                'data': value.to_dict(),
+                'name': value.name,
+                'index': list(value.index)
+            }
+        elif isinstance(value, (list, tuple)):
+            return [cls._make_serializable(item) for item in value]
+        elif isinstance(value, dict):
+            return {k: cls._make_serializable(v) for k, v in value.items()}
+        elif isinstance(value, (np.integer, np.floating)):
+            return float(value)
+        else:
+            return value
+
+    @classmethod
+    def _restore_value(cls, cached_value):
+        """캐시된 값을 원래 형태로 복원"""
+        if isinstance(cached_value, dict) and '_type' in cached_value:
+            if cached_value['_type'] == 'numpy_array':
+                return np.array(cached_value['data'], dtype=cached_value['dtype']).reshape(cached_value['shape'])
+            elif cached_value['_type'] == 'pandas_dataframe':
+                return pd.DataFrame(cached_value['data'], columns=cached_value['columns'], index=cached_value['index'])
+            elif cached_value['_type'] == 'pandas_series':
+                return pd.Series(cached_value['data'], name=cached_value['name'], index=cached_value['index'])
+        elif isinstance(cached_value, list):
+            return [cls._restore_value(item) for item in cached_value]
+        elif isinstance(cached_value, dict):
+            return {k: cls._restore_value(v) for k, v in cached_value.items()}
+        
+        return cached_value
+
+    @classmethod
+    def _load_cache(cls):
+        """캐시 파일 로드"""
+        if os.path.exists(cls._cache_file):
+            try:
+                with open(cls._cache_file, "r", encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"⚠️ 캐시 파일 로드 실패: {e}")
+                return {}
+        return {}
+
+    @classmethod
+    def _save_cache(cls):
+        """캐시를 파일에 저장"""
+        try:
+            with open(cls._cache_file, "w", encoding='utf-8') as f:
+                json.dump(cls._cache, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"⚠️ 캐시 파일 저장 실패: {e}")
+
+    @classmethod
+    def clear_cache(cls, cache_file=None):
+        """캐시 초기화"""
+        cls._initialize_cache(cache_file)
+        cls._cache = {}
+        if os.path.exists(cls._cache_file):
+            os.remove(cls._cache_file)
+
+    @classmethod
+    def cache_info(cls, cache_file=None):
+        """캐시 정보 출력"""
+        cls._initialize_cache(cache_file)
+        print(f"📊 캐시 정보:")
+        print(f"   - 파일: {cls._cache_file}")
+        print(f"   - 항목 수: {len(cls._cache)}")
+        if os.path.exists(cls._cache_file):
+            file_size = os.path.getsize(cls._cache_file)
+            print(f"   - 파일 크기: {file_size:,} bytes")
+
+    @classmethod
+    def delete(cls, key, cache_file=None):
+        """특정 키 삭제"""
+        cls._initialize_cache(cache_file)
+        
+        if key in cls._cache:
+            del cls._cache[key]
+            cls._save_cache()
+            print(f"✅ 키 '{key}' 삭제 완료")
+            return True
+        else:
+            print(f"⚠️ 키 '{key}'를 찾을 수 없습니다")
+            return False
+    
+    @classmethod
+    def delete_keys(cls, *keys, cache_file=None):
+        """여러 키를 한번에 삭제"""
+        cls._initialize_cache(cache_file)
+        
+        deleted_count = 0
+        for key in keys:
+            if key in cls._cache:
+                del cls._cache[key]
+                deleted_count += 1
+                print(f"✅ 키 '{key}' 삭제")
+            else:
+                print(f"⚠️ 키 '{key}' 없음")
+        
+        if deleted_count > 0:
+            cls._save_cache()
+            print(f"🎯 총 {deleted_count}개 키 삭제 완료")
+        
+        return deleted_count
+    
+    @classmethod
+    def list_keys(cls, cache_file=None):
+        """저장된 모든 키 목록 조회"""
+        cls._initialize_cache(cache_file)
+        return list(cls._cache.keys())
+    
+    @classmethod
+    def exists(cls, key, cache_file=None):
+        """키 존재 여부 확인"""
+        cls._initialize_cache(cache_file)
+        return key in cls._cache
+    
+    @classmethod
+    def size(cls, cache_file=None):
+        """캐시 크기 반환"""
+        cls._initialize_cache(cache_file)
+        return len(cls._cache)
+    
+    
