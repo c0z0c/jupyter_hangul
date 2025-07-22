@@ -43,6 +43,22 @@ df = helper.pd_read_csv('data.csv')
 helper.dir_start(pd.DataFrame, 'head')
 ```
 
+### 캐시 기능 (v2.2.0)
+```python
+# 캐시 키 생성 및 데이터 저장/로드
+params = {'alpha': 0.1, 'model': 'RF'}
+key = helper.cache_key(params)
+helper.cache_save(key, model)
+model = helper.cache_load(key)
+
+# 캐시 관리
+helper.cache_exists(key)      # 존재 확인
+helper.cache_list()           # 목록 조회
+helper.cache_delete(key)      # 삭제
+helper.cache_clear()          # 전체 삭제
+helper.cache_info()           # 저장 위치 정보
+```
+
 ## 🛠️ 개별 함수 사용법
 
 ```python
@@ -54,6 +70,18 @@ helper.set_pandas_extension() # pandas 확장만
 # 문제 해결 함수들
 helper.reset_colab_fonts()   # 폰트 완전 리셋 (Colab)
 helper.check_font_status()   # 폰트 상태 확인
+
+# 캐시 함수들 (v2.2.0)
+helper.cache_key(params)     # 캐시 키 생성
+helper.cache_save(key, data) # 데이터 저장
+helper.cache_load(key)       # 데이터 로드
+helper.cache_exists(key)     # 존재 확인
+helper.cache_delete(key)     # 캐시 삭제
+helper.cache_list()          # 캐시 목록
+helper.cache_clear()         # 전체 삭제
+helper.cache_info()          # 캐시 정보
+helper.cache_size()          # 캐시 크기
+helper.cache_get_path()      # 캐시 경로
 ```
 
 ## 🎨 컬럼 설명 관리
@@ -100,6 +128,8 @@ series.head_att(out='html')
 - Series 객체도 DataFrame과 동일한 기능 지원
 - Google Drive 인증 오류 시 `helper.reset_colab_fonts()` 사용
 - 기존 pandas 기능은 그대로 유지
+- **캐시 기능으로 ML 실험 시간 단축**: 반복 실험에서 모델/데이터 재사용
+- **Colab에서 캐시 영구 보존**: Google Drive에 자동 저장으로 세션 재시작 후에도 유지
 
 ## 🆘 문제 해결
 
@@ -110,4 +140,13 @@ helper.reset_colab_fonts()     # 완전 리셋 (재시작됨)
 
 # 재시작 후
 helper.setup()                 # 다시 설정
+
+# 캐시 관련 문제
+helper.cache_info()            # 캐시 저장 위치 확인
+helper.cache_clear()           # 캐시 전체 삭제
 ```
+
+## 📍 캐시 저장 위치
+
+- **Colab**: `/content/drive/MyDrive/jupyter_cache/` (Google Drive 영구 저장)
+- **로컬**: `./jupyter_cache/` (현재 디렉토리)

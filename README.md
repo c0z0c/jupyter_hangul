@@ -134,6 +134,33 @@ df = helper.pd_read_csv(StringIO(csv_string))          # StringIO 객체
 helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검색
 ```
 
+### 캐시 기능 (v2.2.0 신규)
+
+```python
+# 캐시 키 생성 (딕셔너리 형태의 파라미터 기반)
+params = {'alpha': 0.1, 'beta': 0.2, 'model': 'RF'}
+key = helper.cache_key(params)
+
+# 데이터 캐시 저장/로드
+helper.cache_save(key, trained_model)
+model = helper.cache_load(key)
+
+# 캐시 상태 확인
+if helper.cache_exists(key):
+    model = helper.cache_load(key)
+else:
+    # 새로운 모델 훈련
+    model = train_model(params)
+    helper.cache_save(key, model)
+
+# 캐시 관리
+helper.cache_list()           # 저장된 캐시 목록 조회
+helper.cache_delete(key)      # 특정 캐시 삭제
+helper.cache_clear()          # 모든 캐시 삭제
+helper.cache_info()           # 캐시 디렉토리 정보
+helper.cache_size()           # 캐시 디렉토리 크기
+```
+
 ## API 문서
 
 ### 메인 함수
@@ -156,6 +183,19 @@ helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검�
   - 로컬 파일 경로만 자동 변환, URL/파일 객체는 그대로 전달
 - `dir_start(object, cmd)`: 객체의 메서드/속성 검색
 
+### 캐시 함수 (v2.2.0)
+
+- `cache_key(params)`: 딕셔너리 파라미터 기반 고유 키 생성
+- `cache_save(key, data)`: 데이터를 캐시에 저장 (JSON 직렬화)
+- `cache_load(key)`: 캐시에서 데이터 로드
+- `cache_exists(key)`: 캐시 존재 여부 확인
+- `cache_delete(key)`: 특정 캐시 삭제
+- `cache_list()`: 저장된 캐시 목록 조회
+- `cache_clear()`: 모든 캐시 삭제
+- `cache_info()`: 캐시 디렉토리 정보 (위치, 파일 수)
+- `cache_size()`: 캐시 디렉토리 총 크기
+- `cache_get_path()`: 캐시 디렉토리 경로 반환
+
 ### pandas 확장 메서드
 
 - `df.set_head_att(descriptions)`: 컬럼 설명 설정
@@ -175,6 +215,18 @@ helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검�
 - ✅ JupyterLab
 - ✅ VS Code Jupyter Extension
 
+## 캐시 저장 위치
+
+### Google Colab
+- 캐시 디렉토리: `/content/drive/MyDrive/jupyter_cache/`
+- Google Drive에 영구 저장 (세션 재시작 후에도 유지)
+- 자동 디렉토리 생성
+
+### Jupyter Notebook (로컬)
+- 캐시 디렉토리: `./jupyter_cache/` (현재 작업 디렉토리)
+- 로컬 파일 시스템에 저장
+- 프로젝트별 독립적 캐시 관리
+
 ## 설치 요구사항
 
 모듈은 다음 라이브러리들을 사용합니다:
@@ -189,11 +241,13 @@ helper.dir_start(pd.DataFrame, 'head')  # 'head'로 시작하는 메서드 검�
 - 폰트 설치 후 런타임 자동 재시작
 - Google Drive 연동 지원 (인증 오류 자동 해결)
 - 경로: `/content/drive/MyDrive/`
+- 캐시 저장: `/content/drive/MyDrive/jupyter_cache/` (영구 보존)
 - 문제 발생 시 `helper.reset_colab_fonts()` 사용
 
 ### Jupyter Notebook
 - 폰트 다운로드만 진행 (재시작 불필요)
 - 로컬 파일 시스템 사용
+- 캐시 저장: `./jupyter_cache/` (현재 디렉토리)
 - 폴더별 폰트 다운로드 가능
 
 ## 💡 Colab 사용 시 주의사항
@@ -211,6 +265,14 @@ MIT License
 김명환 (2025.07.12)
 
 ## 업데이트 내역
+
+### v2.2.0 (2025.07.22)
+- 🚀 **캐시 기능 추가**: ML 모델 및 데이터 캐싱 시스템 구현
+- 📁 **환경별 캐시 경로**: Colab(Google Drive), 로컬(현재 디렉토리) 자동 설정
+- 🔑 **캐시 키 생성**: 딕셔너리 파라미터 기반 해시 키 자동 생성
+- 💾 **JSON 직렬화**: numpy 배열, pandas DataFrame 자동 변환 지원
+- 🛠️ **캐시 관리**: 목록 조회, 삭제, 크기 확인 등 완전한 관리 기능
+- ⚡ **성능 최적화**: 반복 실험에서 계산 시간 대폭 단축
 
 ### v2.1 (2025.07.13)
 - 🆘 Google Drive 인증 오류 해결 기능 추가

@@ -125,6 +125,31 @@ csv_string = "이름,나이\n김철수,25\n이영희,30"
 df = helper.pd_read_csv(StringIO(csv_string))
 ```
 
+### 캐시 기능 (v2.2.0 신규)
+```python
+# 머신러닝 실험에서 캐시 활용
+params = {'alpha': 0.1, 'n_estimators': 100, 'random_state': 42}
+cache_key = helper.cache_key(params)
+
+# 캐시에서 모델 로드 또는 새로 훈련
+if helper.cache_exists(cache_key):
+    print("캐시에서 모델 로드")
+    model = helper.cache_load(cache_key)
+else:
+    print("새로운 모델 훈련 및 캐시 저장")
+    model = RandomForestClassifier(**params)
+    model.fit(X_train, y_train)
+    helper.cache_save(cache_key, model)
+
+# 캐시 관리
+helper.cache_list()           # 저장된 캐시 목록
+helper.cache_info()           # 캐시 저장 위치 정보
+helper.cache_size()           # 캐시 디렉토리 크기
+
+# Colab에서는 Google Drive에 영구 저장
+# 경로: /content/drive/MyDrive/jupyter_cache/
+```
+
 ## ❓ 자주 묻는 질문
 
 ### Q: 재시작 후 변수가 모두 사라졌어요
@@ -141,6 +166,12 @@ A: 런타임을 완전히 재시작하고 처음부터 다시 시도하세요.
 
 ### Q: DataFrame의 한글 컬럼 설명이 안 보여요
 A: `df.head_att(out='html')`을 사용하면 Colab에서 예쁘게 표시됩니다.
+
+### Q: 캐시 기능을 사용하고 싶어요
+A: `helper.cache_key()`, `helper.cache_save()`, `helper.cache_load()` 함수를 사용하세요. Colab에서는 Google Drive에 자동 저장됩니다.
+
+### Q: 캐시 저장 위치가 궁금해요
+A: Colab에서는 `/content/drive/MyDrive/jupyter_cache/`에 저장되며, `helper.cache_info()`로 확인 가능합니다.
 
 ## 🔧 문제 해결
 
@@ -196,7 +227,16 @@ else:
 df1 = helper.pd_read_csv('test.csv')  # 자동 경로 변환
 
 # URL은 경로 변환 안됨 (그대로 전달)
+# URL은 경로 변환 안됨 (그대로 전달)
 df2 = helper.pd_read_csv('https://raw.githubusercontent.com/user/repo/data.csv')
+
+# 캐시 기능 테스트
+params = {'test': True, 'version': '1.0'}
+cache_key = helper.cache_key(params)
+helper.cache_save(cache_key, df1)
+cached_df = helper.cache_load(cache_key)
+print(f"캐시된 데이터 형태: {cached_df.shape}")
+```
 
 # 직접 경로 지정 (경로 변환 안됨)
 df3 = helper.pd_read_csv('/content/drive/MyDrive/data.csv')
