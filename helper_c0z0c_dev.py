@@ -393,7 +393,12 @@ def cache_save(key, value, cache_file=None):
     value : any
         저장할 데이터 (DataFrame, numpy array, 일반 객체 등)
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 
+        - None (기본값): 환경별 자동 설정
+          * Colab: /content/drive/MyDrive/cache.json
+          * 로컬: cache.json
+        - 상대 경로: Colab에서 /content/drive/MyDrive/ 하위에 자동 저장
+        - 절대 경로: 지정된 경로 그대로 사용
     
     Returns:
     --------
@@ -404,7 +409,8 @@ def cache_save(key, value, cache_file=None):
     >>> import helper.c0z0c.dev as helper
     >>> model = train_model()
     >>> key = helper.cache_key("model_v1", params)
-    >>> helper.cache_save(key, model)
+    >>> helper.cache_save(key, model)  # 환경별 기본 경로
+    >>> helper.cache_save(key, model, "project_a.json")  # Colab: /content/drive/MyDrive/project_a.json
     """
     return DataCatch.save(key, value, cache_file)
 
@@ -417,7 +423,12 @@ def cache_load(key, cache_file=None):
     key : str
         로드할 데이터의 키
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로
+        - None (기본값): 환경별 자동 설정
+          * Colab: /content/drive/MyDrive/cache.json
+          * 로컬: cache.json
+        - 상대 경로: Colab에서 /content/drive/MyDrive/ 하위에서 자동 탐색
+        - 절대 경로: 지정된 경로에서 로드
     
     Returns:
     --------
@@ -427,7 +438,7 @@ def cache_load(key, cache_file=None):
     ---------
     >>> import helper.c0z0c.dev as helper
     >>> key = helper.cache_key("model_v1", params)
-    >>> model = helper.cache_load(key)
+    >>> model = helper.cache_load(key)  # 환경별 기본 경로에서 로드
     >>> if model:
     >>>     print("캐시에서 모델 로드됨")
     """
@@ -1395,7 +1406,22 @@ class DataCatch:
     def _initialize_cache(cls, cache_file=None):
         """캐시 초기화 (한 번만 실행)"""
         if cls._cache is None:
-            cls._cache_file = cache_file or cls._default_cache_file
+            # 기본 캐시 파일 경로 결정
+            if cache_file is None:
+                if _in_colab():
+                    # Colab 환경에서는 Google Drive 경로 사용
+                    cls._cache_file = "/content/drive/MyDrive/cache.json"
+                else:
+                    # 로컬 환경에서는 현재 디렉토리 사용
+                    cls._cache_file = cls._default_cache_file
+            else:
+                # 사용자가 경로를 지정한 경우
+                if _in_colab() and not cache_file.startswith(('/', 'http://', 'https://')):
+                    # Colab에서 상대 경로인 경우 Google Drive 경로로 변환
+                    cls._cache_file = f"/content/drive/MyDrive/{cache_file}"
+                else:
+                    cls._cache_file = cache_file
+            
             cls._cache = cls._load_cache()
     
     @staticmethod
@@ -1526,10 +1552,18 @@ class DataCatch:
     def _save_cache(cls):
         """캐시를 파일에 저장"""
         try:
+            # 디렉토리가 존재하지 않으면 생성
+            cache_dir = os.path.dirname(cls._cache_file)
+            if cache_dir and not os.path.exists(cache_dir):
+                os.makedirs(cache_dir, exist_ok=True)
+                
             with open(cls._cache_file, "w", encoding='utf-8') as f:
                 json.dump(cls._cache, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"⚠️ 캐시 파일 저장 실패: {e}")
+            print(f"💡 경로: {cls._cache_file}")
+            if _in_colab():
+                print("💡 Google Drive가 마운트되지 않았을 수 있습니다.")
 
     @classmethod
     def clear_cache(cls, cache_file=None):
@@ -1543,12 +1577,15 @@ class DataCatch:
     def cache_info(cls, cache_file=None):
         """캐시 정보 출력"""
         cls._initialize_cache(cache_file)
-        print(f"📊 캐시 정보:")
+        env_name = "Colab" if _in_colab() else "로컬"
+        print(f"📊 캐시 정보 ({env_name} 환경):")
         print(f"   - 파일: {cls._cache_file}")
         print(f"   - 항목 수: {len(cls._cache)}")
         if os.path.exists(cls._cache_file):
             file_size = os.path.getsize(cls._cache_file)
             print(f"   - 파일 크기: {file_size:,} bytes")
+        else:
+            print(f"   - 상태: 캐시 파일 없음")
 
     @classmethod
     def delete(cls, key, cache_file=None):
