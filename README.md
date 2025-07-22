@@ -18,16 +18,16 @@ helper.setup()  # 한번에 모든 설정 완료
 - 📊 pandas 확장 기능 (한글 컬럼 설명)
 - 📁 파일 읽기: `helper.pd_read_csv("파일명.csv")`
 - 🔍 유틸리티: `helper.dir_start(객체, "접두사")`
-- 🆘 문제 해결: `helper.reset_colab_fonts()`, `helper.check_font_status()`
+- 💾 캐시 기능: `helper.cache_*()` 함수들
 
-💡 **Colab 사용 시**: 세션 재시작 후 Google Drive 인증 오류 발생 시 `helper.reset_colab_fonts()` 실행
+💡 **Colab 사용 시**: 세션 재시작 후 문제 발생 시 런타임 재시작 후 `helper.setup()` 다시 실행
 
 ## 주요 기능
 
 - 🎨 **한글 폰트 자동 설정**: NanumGothic 폰트를 자동으로 다운로드하고 matplotlib에 적용
 - 📊 **pandas 확장 기능**: DataFrame/Series에 한글 컬럼 설명 기능 추가 (다양한 출력 형식 지원)
 - 🔧 **편의 함수들**: 파일 읽기, 라이브러리 도움말 검색 등
-- 🆘 **문제 해결 기능**: Colab 폰트 리셋, 상태 확인 등
+- 💾 **캐시 기능**: ML 모델 및 데이터 캐싱 시스템
 
 ## 빠른 시작
 
@@ -111,9 +111,8 @@ series.head_att()
 ### 문제 해결 기능
 
 ```python
-# Colab에서 폰트 관련 문제 발생 시
-helper.reset_colab_fonts()    # 폰트 완전 리셋 (런타임 재시작됨)
-helper.check_font_status()    # 현재 폰트 상태 확인
+# Colab에서 문제 발생 시
+# 런타임 재시작 후 helper.setup() 다시 실행
 ```
 
 ### 편의 함수들
@@ -169,11 +168,6 @@ helper.cache_size()           # 캐시 디렉토리 크기
 - `font_download()`: NanumGothic 폰트 다운로드
 - `load_font()`: matplotlib에 한글 폰트 적용
 - `set_pandas_extension()`: pandas 확장 기능 설정
-
-### 문제 해결 함수
-
-- `reset_colab_fonts()`: Colab 폰트 완전 리셋 (Google Drive 인증 오류 해결)
-- `check_font_status()`: 현재 폰트 설정 상태 확인
 
 ### 편의 함수
 
@@ -239,10 +233,10 @@ helper.cache_size()           # 캐시 디렉토리 크기
 
 ### Google Colab
 - 폰트 설치 후 런타임 자동 재시작
-- Google Drive 연동 지원 (인증 오류 자동 해결)
+- Google Drive 연동 지원
 - 경로: `/content/drive/MyDrive/`
 - 캐시 저장: `/content/drive/MyDrive/jupyter_cache/` (영구 보존)
-- 문제 발생 시 `helper.reset_colab_fonts()` 사용
+- 문제 발생 시 런타임 재시작 후 다시 시도
 
 ### Jupyter Notebook
 - 폰트 다운로드만 진행 (재시작 불필요)
@@ -252,9 +246,8 @@ helper.cache_size()           # 캐시 디렉토리 크기
 
 ## 💡 Colab 사용 시 주의사항
 
-- 세션 재시작 후 Google Drive 인증 오류 발생 시 `helper.reset_colab_fonts()` 실행
+- 세션 재시작 후 문제 발생 시 런타임 재시작 필요
 - 문제가 지속되면 런타임 재시작 후 `helper.setup()` 다시 실행
-- 폰트 상태 확인은 `helper.check_font_status()` 사용
 
 ## 라이센스
 
@@ -275,10 +268,7 @@ MIT License
 - ⚡ **성능 최적화**: 반복 실험에서 계산 시간 대폭 단축
 
 ### v2.1 (2025.07.13)
-- 🆘 Google Drive 인증 오류 해결 기능 추가
-- 🔧 폰트 리셋 기능 (`reset_colab_fonts()`) 추가
-- 📊 폰트 상태 확인 기능 (`check_font_status()`) 추가
-- 🎨 pandas `head_att()` 메서드 출력 형식 옵션 추가 (html, print, str)
+-  pandas `head_att()` 메서드 출력 형식 옵션 추가 (html, print, str)
 - 📈 Series 객체 지원 강화
 - 🔄 향상된 에러 처리 및 복구 로직
 

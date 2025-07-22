@@ -45,26 +45,30 @@ helper.setup()
 
 ## 🛠️ 추가 함수들
 
-### `reset_colab_fonts()` - 폰트 문제 해결
+### 캐시 기능 (v2.2.0)
 ```python
-# Google Drive 인증 오류나 폰트 문제 발생 시
-helper.reset_colab_fonts()  # 폰트 완전 리셋 (런타임 재시작됨)
-```
-**주요 기능:**
-- 기존 fonts-nanum 패키지 완전 제거
-- 폰트 캐시 완전 정리 (matplotlib, fontconfig)
-- 패키지 목록 업데이트 후 재설치
-- 자동 런타임 재시작
+# 머신러닝 실험에서 캐시 활용
+params = {'alpha': 0.1, 'n_estimators': 100, 'random_state': 42}
+cache_key = helper.cache_key(params)
 
-### `check_font_status()` - 폰트 상태 확인
-```python
-helper.check_font_status()  # 현재 폰트 설정 상태 확인
+# 캐시에서 모델 로드 또는 새로 훈련
+if helper.cache_exists(cache_key):
+    print("캐시에서 모델 로드")
+    model = helper.cache_load(cache_key)
+else:
+    print("새로운 모델 훈련 및 캐시 저장")
+    model = RandomForestClassifier(**params)
+    model.fit(X_train, y_train)
+    helper.cache_save(cache_key, model)
+
+# 캐시 관리
+helper.cache_list()           # 저장된 캐시 목록
+helper.cache_info()           # 캐시 저장 위치 정보
+helper.cache_size()           # 캐시 디렉토리 크기
+
+# Colab에서는 Google Drive에 영구 저장
+# 경로: /content/drive/MyDrive/jupyter_cache/
 ```
-**확인 항목:**
-- matplotlib 폰트 패밀리 설정
-- 설치된 한글 폰트 목록
-- Colab/로컬 환경 구분
-- Google Drive 마운트 상태
 
 ## 🎨 사용 가능한 기능들
 
@@ -159,7 +163,7 @@ A: 정상입니다. 재시작 후 필요한 변수들을 다시 설정하세요.
 A: 재시작 후 `helper.setup()`을 다시 실행했는지 확인하세요.
 
 ### Q: Google Drive 인증 오류가 발생해요
-A: `helper.reset_colab_fonts()`를 실행하여 완전히 리셋하세요.
+A: 런타임을 재시작하고 `helper.setup()`을 다시 실행하세요.
 
 ### Q: 에러가 계속 발생해요
 A: 런타임을 완전히 재시작하고 처음부터 다시 시도하세요.
@@ -177,10 +181,7 @@ A: Colab에서는 `/content/drive/MyDrive/jupyter_cache/`에 저장되며, `help
 
 ### 1. Google Drive 인증 오류 해결
 ```python
-# 완전한 폰트 리셋 (권장)
-helper.reset_colab_fonts()  # 자동으로 재시작됨
-
-# 재시작 후
+# 런타임 재시작 후 다시 시도
 helper.setup()
 ```
 
@@ -196,23 +197,7 @@ helper.load_font()
 helper.set_pandas_extension()
 ```
 
-### 3. 폰트 문제 진단
-```python
-# 폰트 상태 확인
-helper.check_font_status()
-
-# 현재 폰트 설정 확인
-import matplotlib.pyplot as plt
-print(f"현재 폰트: {plt.rcParams['font.family']}")
-
-# 설치된 한글 폰트 확인
-import matplotlib.font_manager as fm
-fonts = [f.name for f in fm.fontManager.ttflist]
-korean_fonts = [f for f in fonts if 'Nanum' in f or 'Gothic' in f or 'Barun' in f]
-print(f"한글 폰트: {korean_fonts}")
-```
-
-### 4. 환경별 경로 확인 및 파일 읽기
+### 3. 환경별 경로 확인 및 파일 읽기
 ```python
 # 현재 환경 확인
 if helper.is_colab:
