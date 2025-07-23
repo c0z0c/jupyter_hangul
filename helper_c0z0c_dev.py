@@ -567,6 +567,40 @@ def cache_list_keys(cache_file=None):
     """
     return DataCatch.list_keys(cache_file)
 
+def cache_compress(cache_file=None):
+    """
+    캐시 파일을 압축하여 저장 공간 절약
+    
+    Parameters:
+    -----------
+    cache_file : str, optional
+        압축할 캐시 파일 경로 (기본값: cache.json)
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> helper.cache_compress()  # 캐시 파일 압축
+    """
+    return DataCatch.compress_cache(cache_file)
+
+def cache_cleanup(days=30, cache_file=None):
+    """
+    오래된 캐시 항목 정리 (현재는 수동 정리만 지원)
+    
+    Parameters:
+    -----------
+    days : int
+        보관할 일수 (현재 미구현, 향후 확장용)
+    cache_file : str, optional
+        정리할 캐시 파일 경로
+    
+    Examples:
+    ---------
+    >>> import helper.c0z0c.dev as helper
+    >>> helper.cache_cleanup()  # 수동 정리
+    """
+    return DataCatch.cleanup_cache(days, cache_file)
+
 def cache_size(cache_file=None):
     """
     캐시 크기(항목 수) 반환
@@ -1462,13 +1496,23 @@ class DataCatch:
         cls._initialize_cache(cache_file)
         
         try:
+            # 큰 데이터 저장 시 진행 상황 표시
+            import sys
+            data_size = sys.getsizeof(value)
+            if data_size > 10 * 1024 * 1024:  # 10MB 이상
+                print(f"💾 큰 데이터 저장 중... (크기: {data_size / 1024 / 1024:.1f}MB)")
+            
             # 값을 직렬화 가능한 형태로 변환
             serializable_value = cls._make_serializable(value)
             cls._cache[key] = serializable_value
             cls._save_cache()
+            
+            if data_size > 10 * 1024 * 1024:
+                print(f"✓ 저장 완료: 키 '{key[:30]}{'...' if len(key) > 30 else ''}'")
+            
             return True
         except Exception as e:
-            print(f" 저장 실패: {e}")
+            print(f"❌ 저장 실패: {e}")
             return False
 
     @classmethod
@@ -1542,10 +1586,41 @@ class DataCatch:
         """캐시 파일 로드"""
         if os.path.exists(cls._cache_file):
             try:
-                with open(cls._cache_file, "r", encoding='utf-8') as f:
-                    return json.load(f)
+                # 파일 크기 확인
+                file_size = os.path.getsize(cls._cache_file)
+                if file_size > 100 * 1024 * 1024:  # 100MB 이상
+                    print(f"경고: 캐시 파일이 매우 큽니다 ({file_size / 1024 / 1024:.1f}MB). 로딩에 시간이 걸릴 수 있습니다.")
+                
+                # 큰 파일을 위한 청크 단위 읽기
+                with open(cls._cache_file, "r", encoding='utf-8', buffering=8192) as f:
+                    # JSON 파일의 완전성 검증을 위해 끝까지 읽기
+                    content = f.read()
+                    if not content.strip():
+                        print("캐시 파일이 비어있습니다.")
+                        return {}
+                    
+                    # JSON 파싱
+                    cache_data = json.loads(content)
+                    print(f"캐시 로드 완료: {len(cache_data)}개 항목 ({file_size / 1024 / 1024:.2f}MB)")
+                    return cache_data
+                    
+            except json.JSONDecodeError as e:
+                print(f"오류: 캐시 파일이 손상되었습니다: {e}")
+                # 백업 파일 생성
+                backup_file = cls._cache_file + ".backup"
+                try:
+                    import shutil
+                    shutil.copy2(cls._cache_file, backup_file)
+                    print(f"   손상된 파일을 {backup_file}로 백업했습니다.")
+                except:
+                    pass
+                return {}
+            except MemoryError:
+                print(f"오류: 메모리 부족으로 캐시 파일을 로드할 수 없습니다.")
+                print(f"   파일 크기: {file_size / 1024 / 1024:.1f}MB")
+                return {}
             except Exception as e:
-                print(f" 캐시 파일 로드 실패: {e}")
+                print(f"오류: 캐시 파일 로드 실패: {e}")
                 return {}
         return {}
 
@@ -1557,14 +1632,81 @@ class DataCatch:
             cache_dir = os.path.dirname(cls._cache_file)
             if cache_dir and not os.path.exists(cache_dir):
                 os.makedirs(cache_dir, exist_ok=True)
+            
+            # 임시 파일에 먼저 저장 (원자성 보장)
+            temp_file = cls._cache_file + ".tmp"
+            
+            # 예상 파일 크기 추정
+            cache_str = json.dumps(cls._cache, indent=2, ensure_ascii=False)
+            estimated_size = len(cache_str.encode('utf-8'))
+            
+            if estimated_size > 50 * 1024 * 1024:  # 50MB 이상
+                print(f"⚠️  큰 캐시 파일 저장 중... (예상 크기: {estimated_size / 1024 / 1024:.1f}MB)")
+            
+            # 청크 단위로 안전하게 저장
+            with open(temp_file, "w", encoding='utf-8', buffering=8192) as f:
+                # 대용량 JSON을 청크 단위로 작성
+                if estimated_size > 10 * 1024 * 1024:  # 10MB 이상
+                    # 스트리밍 방식으로 JSON 저장
+                    f.write('{\n')
+                    items = list(cls._cache.items())
+                    for i, (key, value) in enumerate(items):
+                        f.write(f'  {json.dumps(key, ensure_ascii=False)}: ')
+                        f.write(json.dumps(value, indent=2, ensure_ascii=False).replace('\n', '\n  '))
+                        if i < len(items) - 1:
+                            f.write(',')
+                        f.write('\n')
+                        
+                        # 주기적으로 플러시
+                        if i % 100 == 0:
+                            f.flush()
+                    f.write('}')
+                else:
+                    # 일반적인 경우
+                    f.write(cache_str)
                 
-            with open(cls._cache_file, "w", encoding='utf-8') as f:
-                json.dump(cls._cache, f, indent=2, ensure_ascii=False)
+                f.flush()  # 버퍼 강제 플러시
+                os.fsync(f.fileno())  # 디스크에 강제 동기화
+            
+            # 임시 파일을 원본 파일로 원자적 이동
+            if os.path.exists(cls._cache_file):
+                # Windows에서는 기존 파일을 먼저 삭제해야 함
+                if os.name == 'nt':
+                    os.remove(cls._cache_file)
+            
+            os.rename(temp_file, cls._cache_file)
+            
+            # 저장 완료 확인
+            actual_size = os.path.getsize(cls._cache_file)
+            if estimated_size > 10 * 1024 * 1024:
+                print(f"✓ 캐시 저장 완료: {len(cls._cache)}개 항목 ({actual_size / 1024 / 1024:.2f}MB)")
+                
+        except OSError as e:
+            print(f"❌ 디스크 공간 부족 또는 권한 오류: {e}")
+            print(f"   경로: {cls._cache_file}")
+            # 임시 파일 정리
+            temp_file = cls._cache_file + ".tmp"
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except:
+                    pass
+        except MemoryError:
+            print(f"❌ 메모리 부족으로 캐시를 저장할 수 없습니다.")
+            print(f"   캐시 항목 수: {len(cls._cache)}")
         except Exception as e:
-            print(f" 캐시 파일 저장 실패: {e}")
-            print(f" 경로: {cls._cache_file}")
+            print(f"❌ 캐시 파일 저장 실패: {e}")
+            print(f"   경로: {cls._cache_file}")
             if _in_colab():
-                print(" Google Drive가 마운트되지 않았을 수 있습니다.")
+                print("   Google Drive가 마운트되지 않았을 수 있습니다.")
+            
+            # 임시 파일 정리
+            temp_file = cls._cache_file + ".tmp"
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except:
+                    pass
 
     @classmethod
     def clear_cache(cls, cache_file=None):
@@ -1579,14 +1721,51 @@ class DataCatch:
         """캐시 정보 출력"""
         cls._initialize_cache(cache_file)
         env_name = "Colab" if _in_colab() else "로컬"
-        print(f" 캐시 정보 ({env_name} 환경):")
+        print(f"📊 캐시 정보 ({env_name} 환경):")
         print(f"   - 파일: {cls._cache_file}")
-        print(f"   - 항목 수: {len(cls._cache)}")
+        print(f"   - 항목 수: {len(cls._cache):,}")
+        
         if os.path.exists(cls._cache_file):
             file_size = os.path.getsize(cls._cache_file)
-            print(f"   - 파일 크기: {file_size:,} bytes")
+            size_mb = file_size / 1024 / 1024
+            
+            if size_mb >= 1:
+                print(f"   - 파일 크기: {size_mb:.2f}MB ({file_size:,} bytes)")
+            elif file_size >= 1024:
+                print(f"   - 파일 크기: {file_size / 1024:.1f}KB ({file_size:,} bytes)")
+            else:
+                print(f"   - 파일 크기: {file_size:,} bytes")
+            
+            # 메모리 사용량 추정
+            try:
+                import sys
+                cache_memory = sys.getsizeof(cls._cache)
+                for key, value in cls._cache.items():
+                    cache_memory += sys.getsizeof(key) + sys.getsizeof(value)
+                
+                memory_mb = cache_memory / 1024 / 1024
+                if memory_mb >= 1:
+                    print(f"   - 메모리 사용량: 약 {memory_mb:.2f}MB")
+                else:
+                    print(f"   - 메모리 사용량: 약 {cache_memory / 1024:.1f}KB")
+            except:
+                pass
+            
+            # 큰 파일에 대한 경고
+            if size_mb > 50:
+                print(f"   ⚠️  캐시 파일이 큽니다. 성능에 영향을 줄 수 있습니다.")
+            elif size_mb > 10:
+                print(f"   ✓ 적당한 크기의 캐시 파일입니다.")
+                
         else:
             print(f"   - 상태: 캐시 파일 없음")
+        
+        # 최근 수정 시간
+        if os.path.exists(cls._cache_file):
+            import time
+            mtime = os.path.getmtime(cls._cache_file)
+            mtime_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
+            print(f"   - 최근 수정: {mtime_str}")
 
     @classmethod
     def delete(cls, key, cache_file=None):
@@ -1639,5 +1818,106 @@ class DataCatch:
         """캐시 크기 반환"""
         cls._initialize_cache(cache_file)
         return len(cls._cache)
+    
+    @classmethod
+    def compress_cache(cls, cache_file=None):
+        """캐시 파일 압축하여 저장 공간 절약"""
+        cls._initialize_cache(cache_file)
+        
+        if not os.path.exists(cls._cache_file):
+            print("압축할 캐시 파일이 없습니다.")
+            return False
+        
+        try:
+            import gzip
+            import shutil
+            
+            original_size = os.path.getsize(cls._cache_file)
+            compressed_file = cls._cache_file + ".gz"
+            
+            print(f"캐시 파일 압축 중... (원본: {original_size / 1024 / 1024:.2f}MB)")
+            
+            with open(cls._cache_file, 'rb') as f_in:
+                with gzip.open(compressed_file, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            
+            compressed_size = os.path.getsize(compressed_file)
+            compression_ratio = (1 - compressed_size / original_size) * 100
+            
+            print(f"✓ 압축 완료: {compressed_size / 1024 / 1024:.2f}MB")
+            print(f"  압축률: {compression_ratio:.1f}% 절약")
+            print(f"  압축 파일: {compressed_file}")
+            
+            return True
+            
+        except ImportError:
+            print("❌ gzip 모듈을 사용할 수 없습니다.")
+            return False
+        except Exception as e:
+            print(f"❌ 압축 실패: {e}")
+            return False
+    
+    @classmethod
+    def cleanup_cache(cls, days=30, cache_file=None):
+        """캐시 정리 (현재는 수동 정리)"""
+        cls._initialize_cache(cache_file)
+        
+        if not cls._cache:
+            print("정리할 캐시가 없습니다.")
+            return 0
+        
+        print(f"🧹 캐시 정리 도구 (현재 {len(cls._cache)}개 항목)")
+        print("향후 업데이트에서 자동 정리 기능이 추가될 예정입니다.")
+        print("현재는 수동으로 cache_clear() 또는 cache_delete() 를 사용하세요.")
+        
+        # 메모리 사용량이 큰 항목들 표시
+        try:
+            import sys
+            large_items = []
+            for key, value in cls._cache.items():
+                item_size = sys.getsizeof(value)
+                if item_size > 1024 * 1024:  # 1MB 이상
+                    large_items.append((key, item_size))
+            
+            if large_items:
+                large_items.sort(key=lambda x: x[1], reverse=True)
+                print("\n큰 캐시 항목들 (1MB 이상):")
+                for key, size in large_items[:5]:  # 상위 5개만
+                    print(f"  - {key[:50]}{'...' if len(key) > 50 else ''}: {size / 1024 / 1024:.2f}MB")
+                    
+        except Exception:
+            pass
+        
+        return len(cls._cache)
+    
+    @classmethod
+    def optimize_cache(cls, cache_file=None):
+        """캐시 최적화 (재저장으로 파일 크기 최적화)"""
+        cls._initialize_cache(cache_file)
+        
+        if not os.path.exists(cls._cache_file):
+            print("최적화할 캐시 파일이 없습니다.")
+            return False
+        
+        try:
+            original_size = os.path.getsize(cls._cache_file)
+            print(f"🔧 캐시 파일 최적화 중... (현재: {original_size / 1024 / 1024:.2f}MB)")
+            
+            # 캐시를 다시 저장하여 파일 최적화
+            cls._save_cache()
+            
+            new_size = os.path.getsize(cls._cache_file)
+            if new_size < original_size:
+                saved_size = original_size - new_size
+                saved_percent = (saved_size / original_size) * 100
+                print(f"✓ 최적화 완료: {saved_size / 1024 / 1024:.2f}MB 절약 ({saved_percent:.1f}%)")
+            else:
+                print("✓ 최적화 완료: 추가 절약 공간 없음")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ 최적화 실패: {e}")
+            return False
     
     
