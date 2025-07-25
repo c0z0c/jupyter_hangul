@@ -1,47 +1,73 @@
 # 🚀 Colab 한글 폰트 설정 가이드
 
-## 📋 간단한 사용법
+## 📋 간단한 사용법 (v2.2.0)
 
-### 1️⃣ 첫 번째 실행
+### ✨ 새로운 방식 (권장)
 ```python
 import urllib.request
 # 모듈 다운로드
 url = "https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py"
 urllib.request.urlretrieve(url, "helper_c0z0c_dev.py")
-# 모듈 import
+# 모듈 import 및 설정
 import helper_c0z0c_dev as helper
-# 설정 시작
-helper.setup()
+helper.setup();  # 재부팅 없이 바로 완료!
 ```
 
-### 2️⃣ 재시작 후 실행
-재시작이 완료되면 **새로운 셀**에서 다음 코드를 실행:
-
-```python
-# 재시작 후 실행
-import helper_c0z0c_dev as helper
-# 설정 완료
-helper.setup()
+**🎉 간소화된 출력**:
+```
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.2.0)
+✅ 한글 폰트가 이미 설정되어 있습니다.
+🎉 설정 완료! 한글폰트 및 pandas 확장 기능 사용 가능
 ```
 
-## 🔄 자동 재시작 과정
+### 🔧 이전 방식 (호환성)
+문제 발생 시에만 사용하세요.
 
-### 📌 재시작이 필요한 이유
-- Colab에서 폰트 설치 후 Python 프로세스가 폰트를 인식하려면 재시작이 필요합니다
-- 캐시 삭제만으로는 이미 로드된 폰트 정보를 갱신할 수 없습니다
+## 🆕 v2.2.0의 주요 개선사항
 
-### 🎯 재시작 과정
+### ⚡ 무재부팅 시스템
+- **기존**: 폰트 설치 후 런타임 재시작 필요
+- **v2.2.0**: 재부팅 없이 즉시 한글 폰트 사용 가능 ✨
+
+### 🎯 스마트 설치
+- 한글 폰트가 이미 있으면 재설치하지 않음
+- 필요한 경우에만 시스템 재시작 (폰트 로딩 실패 시)
+
+### 📝 깔끔한 출력
+- 기존 15줄 → 3-4줄로 간소화
+- 불필요한 True 출력 제거 (`;` 사용)
+
+## 🔄 폰트 설치 과정 (참고용)
+
+### 📌 v2.2.0의 스마트 설치 과정
+- **1단계**: 기존 한글 폰트 확인 (있으면 스킵)
+- **2단계**: 필요시에만 폰트 다운로드/설치
+- **3단계**: matplotlib 캐시 갱신 (재부팅 없이)
+- **4단계**: 즉시 사용 가능! 🎉
+
+### 📌 이전 방식 (참고용)
+- Colab에서 폰트 설치 후 Python 프로세스가 폰트를 인식하려면 재시작이 필요했습니다
+- 캐시 삭제만으로는 이미 로드된 폰트 정보를 갱신할 수 없었습니다
+
+### 🎯 v2.2.0 실행 과정
+1. **스마트 체크**: 한글 폰트 존재 여부 확인
+2. **조건부 설치**: 필요시에만 폰트 다운로드/설치  
+3. **즉시 적용**: matplotlib 설정 갱신 (재부팅 없이)
+4. **완료**: 바로 한글 폰트 사용 가능! ✨
+
+### 🎯 이전 방식 (참고용)
 1. **폰트 설치**: `fonts-nanum` 패키지 설치
-2. **캐시 갱신**: `fc-cache -fv` 실행
+2. **캐시 갱신**: `fc-cache -fv` 실행  
 3. **안내 메시지**: 재시작 후 실행할 코드 안내
 4. **자동 재시작**: `os.kill(os.getpid(), 9)` 실행
 5. **수동 실행**: 재시작 후 사용자가 코드 실행
 
-### 📋 재시작 후 실행되는 것들
-- ✅ 한글 폰트 설정 (matplotlib)
+### 📋 v2.2.0에서 제공되는 기능들
+- ✅ 한글 폰트 설정 (matplotlib) - **재부팅 불필요**
 - ✅ pandas 확장 기능
 - ✅ 유틸리티 함수들
 - ✅ Google Drive 연결 (Colab)
+- ✅ 캐시 기능 (v2.2.0 신규)
 
 ## 🛠️ 추가 함수들
 
@@ -67,7 +93,7 @@ helper.cache_info()           # 캐시 저장 위치 정보
 helper.cache_size()           # 캐시 디렉토리 크기
 
 # Colab에서는 Google Drive에 영구 저장
-# 경로: /content/drive/MyDrive/jupyter_cache/
+# 경로: /content/drive/MyDrive/cache.json
 ```
 
 ## 🎨 사용 가능한 기능들
@@ -151,22 +177,19 @@ helper.cache_info()           # 캐시 저장 위치 정보
 helper.cache_size()           # 캐시 디렉토리 크기
 
 # Colab에서는 Google Drive에 영구 저장
-# 경로: /content/drive/MyDrive/jupyter_cache/
+# 경로: /content/drive/MyDrive/cache.json
 ```
 
 ## ❓ 자주 묻는 질문
 
-### Q: 재시작 후 변수가 모두 사라졌어요
-A: 정상입니다. 재시작 후 필요한 변수들을 다시 설정하세요.
-
 ### Q: 한글이 여전히 깨져요
-A: 재시작 후 `helper.setup()`을 다시 실행했는지 확인하세요.
+A: `helper.setup()`을 다시 실행해보세요. v2.2.0에서는 재부팅 없이 해결됩니다.
 
 ### Q: Google Drive 인증 오류가 발생해요
-A: 런타임을 재시작하고 `helper.setup()`을 다시 실행하세요.
+A: `helper.setup()`을 다시 실행하면 자동으로 해결됩니다.
 
 ### Q: 에러가 계속 발생해요
-A: 런타임을 완전히 재시작하고 처음부터 다시 시도하세요.
+A: `helper.setup()`을 다시 실행하고, 문제가 지속되면 런타임을 재시작해보세요.
 
 ### Q: DataFrame의 한글 컬럼 설명이 안 보여요
 A: `df.head_att(out='html')`을 사용하면 Colab에서 예쁘게 표시됩니다.
@@ -175,13 +198,13 @@ A: `df.head_att(out='html')`을 사용하면 Colab에서 예쁘게 표시됩니�
 A: `helper.cache_key()`, `helper.cache_save()`, `helper.cache_load()` 함수를 사용하세요. Colab에서는 Google Drive에 자동 저장됩니다.
 
 ### Q: 캐시 저장 위치가 궁금해요
-A: Colab에서는 `/content/drive/MyDrive/jupyter_cache/`에 저장되며, `helper.cache_info()`로 확인 가능합니다.
+A: Colab에서는 `/content/drive/MyDrive/cache.json`에 저장되며, `helper.cache_info()`로 확인 가능합니다.
 
 ## 🔧 문제 해결
 
 ### 1. Google Drive 인증 오류 해결
 ```python
-# 런타임 재시작 후 다시 시도
+# v2.2.0에서는 재부팅 없이 해결
 helper.setup()
 ```
 
@@ -234,9 +257,10 @@ with open('/content/data.csv', 'r') as f:
 ## 📞 지원
 
 문제가 지속되면 다음을 확인하세요:
-- 런타임 유형 (GPU/TPU 사용 시 동작이 다를 수 있음)
+- v2.2.0 사용 여부 (`helper.__version__` 확인)
+- `helper.setup()` 재실행
 - 네트워크 연결 상태
 - Colab 버전 및 업데이트 상태
 
 ---
-*작성자: 김명환 | 날짜: 2025.07.13 | 버전: v2.1*
+*작성자: 김명환 | 날짜: 2025.07.25 | 버전: v2.2.0*

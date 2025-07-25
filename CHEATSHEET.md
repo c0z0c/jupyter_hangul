@@ -5,10 +5,22 @@
 ```python
 !wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py
 import helper_c0z0c_dev as helper
-helper.setup()  # 모든 설정 완료!
+helper.setup();  # 모든 설정 완료! (;로 반환값 숨김)
 ```
 
-## 🎯 주요 기능
+**🎉 v2.2.0 간소화된 출력**:
+```
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.2.0)
+✅ 한글 폰트가 이미 설정되어 있습니다.
+🎉 설정 완료! 한글폰트 및 pandas 확장 기능 사용 가능
+```
+
+## 🎯 주요 특징
+
+### ⚡ v2.2.0 개선사항
+- **재부팅 불필요**: 안정적인 한글 폰트 로딩
+- **간소화된 출력**: 3-4줄 깔끔한 메시지
+- **True 출력 억제**: 세미콜론(;) 사용으로 더 깔끔
 
 ### 한글 폰트 설정
 ```python
@@ -112,19 +124,19 @@ series.head_att(out='html')
 ## 💡 팁
 
 - `setup()` 한 번만 실행하면 모든 설정 완료
-- Colab에서는 런타임 재시작 후 다시 실행 필요
+- v2.2.0에서는 재부팅 없이 안정적으로 작동
 - 한글 컬럼 설명은 HTML 형태로 예쁘게 출력 가능 (`out='html'`)
 - Series 객체도 DataFrame과 동일한 기능 지원
 - 기존 pandas 기능은 그대로 유지
 - **캐시 기능으로 ML 실험 시간 단축**: 반복 실험에서 모델/데이터 재사용
 - **Colab에서 캐시 영구 보존**: Google Drive에 자동 저장으로 세션 재시작 후에도 유지
-- **문제 발생 시**: 런타임 재시작 후 `helper.setup()` 다시 실행
+- **문제 발생 시**: `helper.setup()` 다시 실행하면 대부분 해결
 
 ## 🆘 문제 해결
 
 ```python
-# Colab에서 문제 발생 시 런타임 재시작 후
-helper.setup()                 # 다시 설정
+# Colab에서 문제 발생 시
+helper.setup()                 # 다시 설정 (재부팅 불필요)
 
 # 캐시 관련 문제
 helper.cache_info()            # 캐시 저장 위치 확인

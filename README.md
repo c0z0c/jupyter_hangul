@@ -1,6 +1,8 @@
 # Jupyter 한글 환경 설정 모듈
 
 > 🚀 **간단 사용법**: `helper.setup()` 한 번으로 모든 설정 완료!
+> 
+> ⚡ **v2.2.0 NEW**: 재부팅 없는 안정적 한글 지원, 간소화된 출력 메시지
 
 Jupyter Notebook과 Google Colab에서 한글 폰트 설정 및 pandas 확장 기능을 제공하는 모듈입니다.
 
@@ -10,17 +12,25 @@ https://youtu.be/8kfbuseTN-A
 
 ```python
 import helper_c0z0c_dev as helper
-helper.setup()  # 한번에 모든 설정 완료
+helper.setup();  # 한번에 모든 설정 완료 (세미콜론으로 반환값 숨김)
+```
+
+**🎉 개선된 출력 (v2.2.0)**:
+```
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.2.0)
+✅ 폰트 파일이 이미 존재합니다.
+✅ 한글 폰트가 이미 설정되어 있습니다.
+🎉 설정 완료! 한글폰트 및 pandas 확장 기능 사용 가능
 ```
 
 **사용 가능한 기능:**
-- 🎨 한글 폰트 지원 (matplotlib)
+- 🎨 한글 폰트 지원 (matplotlib) - **재부팅 불필요**
 - 📊 pandas 확장 기능 (한글 컬럼 설명)
 - 📁 파일 읽기: `helper.pd_read_csv("파일명.csv")`
 - 🔍 유틸리티: `helper.dir_start(객체, "접두사")`
 - 💾 캐시 기능: `helper.cache_*()` 함수들
 
-💡 **Colab 사용 시**: 세션 재시작 후 문제 발생 시 런타임 재시작 후 `helper.setup()` 다시 실행
+💡 **v2.2.0 특징**: 안정적인 폰트 로딩으로 재부팅 없이 바로 사용 가능
 
 ## 주요 기능
 
@@ -112,7 +122,7 @@ series.head_att()
 
 ```python
 # Colab에서 문제 발생 시
-# 런타임 재시작 후 helper.setup() 다시 실행
+# helper.setup() 다시 실행하면 대부분 해결됨
 ```
 
 ### 편의 함수들
@@ -212,12 +222,12 @@ helper.cache_size()           # 캐시 디렉토리 크기
 ## 캐시 저장 위치
 
 ### Google Colab
-- 캐시 디렉토리: `/content/drive/MyDrive/jupyter_cache/`
+- 캐시 파일: `/content/drive/MyDrive/cache.json`
 - Google Drive에 영구 저장 (세션 재시작 후에도 유지)
-- 자동 디렉토리 생성
+- 자동 파일 생성
 
 ### Jupyter Notebook (로컬)
-- 캐시 디렉토리: `./jupyter_cache/` (현재 작업 디렉토리)
+- 캐시 파일: `./cache.json` (현재 작업 디렉토리)
 - 로컬 파일 시스템에 저장
 - 프로젝트별 독립적 캐시 관리
 
@@ -232,22 +242,23 @@ helper.cache_size()           # 캐시 디렉토리 크기
 ## 환경별 특징
 
 ### Google Colab
-- 폰트 설치 후 런타임 자동 재시작
+- 스마트 폰트 설치: 기존 폰트가 있으면 설치 생략
+- 재부팅 없는 안정적 폰트 로딩 (v2.2.0)
 - Google Drive 연동 지원
 - 경로: `/content/drive/MyDrive/`
-- 캐시 저장: `/content/drive/MyDrive/jupyter_cache/` (영구 보존)
-- 문제 발생 시 런타임 재시작 후 다시 시도
+- 캐시 저장: `/content/drive/MyDrive/cache.json` (영구 보존)
+- 문제 발생 시 `helper.setup()` 다시 실행
 
 ### Jupyter Notebook
 - 폰트 다운로드만 진행 (재시작 불필요)
 - 로컬 파일 시스템 사용
-- 캐시 저장: `./jupyter_cache/` (현재 디렉토리)
+- 캐시 저장: `./cache.json` (현재 디렉토리)
 - 폴더별 폰트 다운로드 가능
 
 ## 💡 Colab 사용 시 주의사항
 
-- 세션 재시작 후 문제 발생 시 런타임 재시작 필요
-- 문제가 지속되면 런타임 재시작 후 `helper.setup()` 다시 실행
+- v2.2.0에서는 재부팅 없이 안정적으로 작동합니다
+- 문제 발생 시 `helper.setup()` 다시 실행하면 대부분 해결됩니다
 
 ## 라이센스
 
@@ -257,13 +268,18 @@ MIT License
 
 김명환 (2025.07.12)
 
+## 감사 인사
+
+v2.2.0 기능 테스트에 도움을 주신 조하나 강사님께 감사드립니다.
+
 ## 업데이트 내역
 
 ### v2.2.0 (2025.07.22)
-- 🚀 **캐시 기능 추가**: ML 모델 및 데이터 캐싱 시스템 구현
+- 🚀 **무재부팅 시스템**: 재부팅 없이 안정적 한글 폰트 로딩
+- 📝 **간소화된 출력**: 15줄 → 3줄로 메시지 간소화
+- 💾 **캐시 기능 추가**: ML 모델 및 데이터 캐싱 시스템 구현
 - 📁 **환경별 캐시 경로**: Colab(Google Drive), 로컬(현재 디렉토리) 자동 설정
 - 🔑 **캐시 키 생성**: 딕셔너리 파라미터 기반 해시 키 자동 생성
-- 💾 **JSON 직렬화**: numpy 배열, pandas DataFrame 자동 변환 지원
 - 🛠️ **캐시 관리**: 목록 조회, 삭제, 크기 확인 등 완전한 관리 기능
 - ⚡ **성능 최적화**: 반복 실험에서 계산 시간 대폭 단축
 

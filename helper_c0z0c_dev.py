@@ -26,9 +26,10 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
     helper.cache_info()                                     # 캐시 정보
     helper.cache_clear()                                    # 캐시 초기화
 
-�Colab 사용 시 주의사항:
-    - 세션 재시작 후 Google Drive 인증 오류 발생 시 런타임 재시작 필요
-    - 문제가 지속되면 런타임 재시작 후 helper.setup() 다시 실행
+🆕 v2.2.0 개선사항:
+    - 재부팅 없는 안정적 한글 폰트 로딩
+    - 간소화된 출력 메시지 (3-4줄)
+    - 문제 발생 시 helper.setup() 다시 실행하면 해결
 
 작성자: 김명환
 날짜: 2025.07.22
@@ -133,7 +134,7 @@ def _colab_font_reinstall():
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
-    print("🔄 폰트 문제 발생 - 런타임 재시작 후 다시 시도하세요")
+    print("🔄 폰트 문제 발생 - helper.setup() 다시 실행 권장")
     
     try:
         # 캐시 정리 및 패키지 재설치 (출력 없이)
