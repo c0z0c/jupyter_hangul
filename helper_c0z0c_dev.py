@@ -100,54 +100,37 @@ def font_download():
     if _in_colab():
         # 이미 설치되어 있는지 확인
         if os.system("dpkg -l | grep fonts-nanum") == 0:
-            print("fonts-nanum이 이미 설치되어 있습니다.")
-            print("추가 설치를 건너뜁니다.")
+            print("✅ 한글 폰트가 이미 설치되어 있습니다.")
             return True
             
-        print("Colab 환경에서 나눔 폰트 설치를 시작합니다...")
+        print("🚀 한글 폰트 설치 중... (약 30-60초 소요)")
         
         try:
-            # 1단계: 기존 matplotlib 캐시 정리
-            print("1단계: matplotlib 캐시 정리 중...")
-            subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
+            # 나눔 폰트 패키지 설치 및 캐시 업데이트
+            subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', '-qq'], 
+                          capture_output=True, text=True)
+            subprocess.run(['sudo', 'fc-cache', '-fv', '-qq'], 
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
-            # 2단계: 패키지 목록 업데이트
-            print("2단계: 패키지 목록 업데이트 중...")
-            subprocess.run(['apt-get', 'update', '-qq'], 
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            # 3단계: 나눔 폰트 패키지 설치 (모든 나눔 폰트 포함)
-            print("3단계: 나눔 폰트 패키지 설치 중...")
-            subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(['apt-get', 'install', 'fonts-nanum*', '-qq'], 
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            # 4단계: 폰트 캐시 갱신
-            print("4단계: 폰트 캐시 갱신 중...")
-            subprocess.run(['sudo', 'fc-cache', '-fv'], 
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            print("폰트 설치 완료!")
-            print("matplotlib 캐시가 정리되었습니다.")
+            print("✅ 폰트 설치 완료!")
             return True
             
         except Exception as e:
-            print(f"폰트 설치 중 오류 발생: {e}")
+            print(f"❌ 폰트 설치 실패: {e}")
             return False
     else:
         font_url = "https://github.com/c0z0c/jupyter_hangul/raw/master/NanumGothic.ttf"
         font_dir = "fonts"
         os.makedirs(font_dir, exist_ok=True)
         font_path = os.path.join(font_dir, "NanumGothic.ttf")
+        
         if not os.path.exists(font_path):
-            print("Downloading NanumGothic.ttf...")
+            print("📥 한글 폰트 다운로드 중...")
             urllib.request.urlretrieve(font_url, font_path)
-            print("Download complete.")
+            print("✅ 다운로드 완료!")
         else:
-            print("Font already exists.")
-        print(f"font_path={font_path}")
+            print("✅ 폰트 파일이 이미 존재합니다.")
+        
         return True
 
 def _colab_font_reinstall():
@@ -160,67 +143,22 @@ def _colab_font_reinstall():
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
-    print("Colab 환경에서 폰트 재설치를 진행합니다...")
+    print("🔄 폰트 재설치 및 런타임 재시작 중...")
+    print("💡 재시작 후 helper.setup()을 다시 실행하세요.")
+    
     try:
-        # 기존 matplotlib 캐시 완전 정리
-        print("1단계: matplotlib 캐시 완전 정리 중...")
-        subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['rm', '-rf', os.path.expanduser('~/.fontconfig')], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 기존 폰트 패키지 완전 제거
-        print("2단계: 기존 fonts-nanum 패키지 제거 중...")
+        # 캐시 정리 및 패키지 재설치
         subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['sudo', 'apt-get', 'autoremove', '-y'], 
+        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', '-qq'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        # 폰트 캐시 정리
-        print("3단계: 시스템 폰트 캐시 정리 중...")
-        subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 패키지 목록 업데이트
-        print("4단계: 패키지 목록 업데이트 중...")
-        subprocess.run(['sudo', 'apt-get', 'update', '-qq'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 나눔 폰트 재설치 (모든 나눔 폰트 포함)
-        print("5단계: 나눔 폰트 재설치 중...")
-        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['apt-get', 'install', 'fonts-nanum*', '-qq'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        # 폰트 캐시 재구성
-        print("6단계: 폰트 캐시 재구성 중...")
-        subprocess.run(['sudo', 'fc-cache', '-f', '-v'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        restart_guide = """
-# 폰트 재설치 완료
-
-폰트 재설치가 완료되었습니다. **프로세서를 재시작**하고 다시 시도하세요.
-
-## 재시작 방법
-1. **메뉴 > 런타임 > 런타임 다시 시작** 클릭
-2. 재시작 후 **helper.setup()** 다시 실행
-
-## 설치된 폰트
-- NanumBarunGothic (나눔바른고딕)
-- NanumGothic (나눔고딕)
-- NanumMyeongjo (나눔명조)
-"""
-        display(Markdown(restart_guide))
-        
-        print("3초 후 프로세서를 재시작합니다...")
-        time.sleep(3)
+        time.sleep(2)
         os.kill(os.getpid(), 9)
         
     except Exception as reinstall_error:
-        print(f"재설치 중 오류 발생: {str(reinstall_error)}")
-        print("수동으로 런타임을 재시작하고 다시 시도하세요.")
+        print(f"❌ 재설치 오류: {str(reinstall_error)}")
+        print("💡 수동으로 런타임을 재시작하고 다시 시도하세요.")
 
 def load_font():
     """폰트를 로딩하고 설정합니다."""
@@ -234,18 +172,14 @@ def load_font():
         warnings.filterwarnings(action='ignore')
         
         if _in_colab():
-            print("Colab 환경에서 폰트 설정 중...")
             is_colab = True
             
             # Google Drive 마운트 시도 (선택적)
             try:
-                print("Google Drive 연결 시도 중...")
                 from google.colab import drive
                 drive.mount("/content/drive", force_remount=True)
-                print("Google Drive 연결 성공")
-            except Exception as drive_error:
-                print(f"Google Drive 연결 실패: {str(drive_error)}")
-                print("� Google Drive 없이 계속 진행합니다...")
+            except Exception:
+                pass  # 실패해도 진행
             
             # 한글 폰트가 이미 설정되어 있는지 확인
             current_font = plt.rcParams.get('font.family', ['default'])
@@ -253,42 +187,22 @@ def load_font():
                 current_font = current_font[0] if current_font else 'default'
             
             if 'nanum' in current_font.lower() or 'gothic' in current_font.lower():
-                print(f"한글 폰트가 이미 설정되어 있습니다: {current_font}")
-                print("추가 설정을 건너뜁니다.")
+                print(f"✅ 한글 폰트가 이미 설정되어 있습니다: {current_font}")
                 return True
             
-            # NanumBarunGothic 폰트 설정 시도
-            font_set_success = False
-            path = '/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf'
+            print("🎨 한글 폰트 설정 중...")
             
+            # 폰트 설정 시도
             try:
-                if os.path.exists(path):
-                    font_name = fm.FontProperties(fname=path, size=10).get_name()
-                    plt.rc('font', family=font_name)
-                    plt.rcParams['axes.unicode_minus'] = False
-                    print(f"폰트 설정 완료: {font_name}")
-                    display(Markdown("**실행 환경**: Colab\n나눔바른고딕 폰트가 성공적으로 설정되었습니다."))
-                    font_set_success = True
-                else:
-                    # 폴백: NanumBarunGothic 사용
-                    plt.rc("font", family="NanumBarunGothic")
-                    plt.rcParams['axes.unicode_minus'] = False
-                    print("폰트 설정 완료: NanumBarunGothic")
-                    display(Markdown("**실행 환경**: Colab\n한글 폰트가 성공적으로 설정되었습니다."))
-                    font_set_success = True
+                plt.rc('font', family='NanumBarunGothic')
+                plt.rcParams['axes.unicode_minus'] = False
+                print("✅ 폰트 설정 완료: NanumBarunGothic")
+                return True
                     
             except Exception as font_error:
-                print(f"폰트 설정 중 오류 발생: {str(font_error)}")
-                font_set_success = False
-            
-            # 폰트 설정이 실패한 경우에만 재설치 및 시스템 재시작
-            if not font_set_success:
-                print("한글 폰트 로딩에 실패했습니다.")
-                print("폰트 재설치를 시도합니다...")
+                print("❌ 한글 폰트 로딩 실패 - 재설치를 시도합니다...")
                 _colab_font_reinstall()
                 return False
-            
-            return True
             
         else:
             is_colab = False
@@ -297,8 +211,7 @@ def load_font():
                 current_font = current_font[0] if current_font else "default"
                 
             if current_font == "NanumGothic":
-                print("한글 폰트가 이미 설정되어 있습니다.")
-                print("추가 작업을 하지 않습니다.")
+                print("✅ 한글 폰트가 이미 설정되어 있습니다.")
                 return True
 
             try:
@@ -306,26 +219,22 @@ def load_font():
                     fm.fontManager.addfont(font_path)
                     plt.rcParams["font.family"] = "NanumGothic"
                     plt.rcParams['axes.unicode_minus'] = False
-                    display(Markdown("**실행 환경**: 로컬\n한글 폰트가 성공적으로 설정되었습니다."))
+                    print("✅ 폰트 설정 완료!")
                     return True
                 else:
-                    print("폰트 파일을 찾을 수 없습니다.")
-                    print("font_download()를 먼저 실행하세요.")
+                    print("❌ 폰트 파일을 찾을 수 없습니다. font_download()를 먼저 실행하세요.")
                     return False
             except Exception as e:
-                display(Markdown(f"**오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))
+                print(f"❌ 폰트 설정 실패: {str(e)}")
                 return False
                 
     except Exception as e:
-        display(Markdown(f"**오류 발생**: {str(e)}\n폰트 설정에 실패했습니다."))   
-        print("폰트 관련 오류 발생")
+        print(f"❌ 예상치 못한 오류: {str(e)}")
         
         if _in_colab():
-            print("Colab 환경에서 폰트 재설치를 시도합니다...")
             _colab_font_reinstall()
         else:
-            print("로컬 환경에서는 폰트 파일을 다시 다운로드하세요.")
-            print("helper.font_download()를 다시 실행해보세요.")
+            print("💡 helper.font_download()를 다시 실행해보세요.")
         
         return False
 
@@ -367,43 +276,30 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
     if isinstance(filepath_or_buffer, str) and not filepath_or_buffer.startswith(('http://', 'https://', 'ftp://', 'file://')):
         if is_colab:
             full_path = f"/content/drive/MyDrive/{filepath_or_buffer}"
-            print(f"Colab 환경 - 파일 경로: {full_path}")
         else:
             full_path = filepath_or_buffer
-            print(f"로컬 환경 - 파일 경로: {full_path}")
         
         try:
             if not os.path.exists(full_path):
-                print(f"파일을 찾을 수 없습니다: {full_path}")
-                if is_colab:
-                    print(" Google Drive가 마운트되지 않았거나 파일 경로를 확인하세요.")
-                else:
-                    print(" 현재 디렉토리 기준으로 파일 경로를 확인하세요.")
+                print(f"❌ 파일을 찾을 수 없습니다: {full_path}")
                 return None
             
             df = pd.read_csv(full_path, **kwargs)
-            file_size = os.path.getsize(full_path)
-            print(f"파일 읽기 성공: {full_path}")
-            print(f"데이터 크기: {df.shape[0]}행 × {df.shape[1]}열 ({file_size:,} bytes)")
+            print(f"✅ 파일 읽기 성공: {df.shape[0]}행 × {df.shape[1]}열")
             return df
             
         except Exception as e:
-            print(f"파일 읽기 실패: {str(e)}")
+            print(f"❌ 파일 읽기 실패: {str(e)}")
             return None
     else:
         # 문자열이 아니거나 URL인 경우 (파일 객체, URL 등) 그대로 전달
         try:
-            if isinstance(filepath_or_buffer, str):
-                print(f"URL로 직접 읽기: {filepath_or_buffer}")
-            else:
-                print(f"파일 객체 등으로 직접 읽기: {type(filepath_or_buffer)}")
             df = pd.read_csv(filepath_or_buffer, **kwargs)
-            print(f"파일 읽기 성공")
-            print(f"데이터 크기: {df.shape[0]}행 × {df.shape[1]}열")
+            print(f"✅ 데이터 읽기 성공: {df.shape[0]}행 × {df.shape[1]}열")
             return df
             
         except Exception as e:
-            print(f"파일 읽기 실패: {str(e)}")
+            print(f"❌ 데이터 읽기 실패: {str(e)}")
             return None
 
 def dir_start(object, cmd):
@@ -449,8 +345,6 @@ def set_pandas_extension():
     setattr(pd.Series, "_init_column_attrs", _init_column_attrs)
     setattr(pd.Series, "_convert_columns", _convert_columns)
     setattr(pd.Series, "_update_column_descriptions", _update_column_descriptions)
-    
-    print("pandas 확장 기능이 성공적으로 설정되었습니다.")
 
 def setup():
     """한번에 모든 설정 완료"""
@@ -459,44 +353,23 @@ def setup():
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
-    print("helper 모듈을 로드했습니다.")
-    print("Jupyter/Colab 한글 환경 설정을 시작합니다...")
+    print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
     
     try:
-        # 폰트 다운로드/설치
+        # 폰트 다운로드/설치 및 로딩
         font_download_success = font_download()
-        if not font_download_success:
-            print("폰트 다운로드/설치에 실패했습니다.")
-            return False
+        if font_download_success:
+            font_load_success = load_font()
+            if font_load_success:
+                set_pandas_extension()
+                print("🎉 설정 완료! 한글폰트 및 pandas 확장 기능 사용 가능")
+                return True
         
-        # 폰트 로딩
-        font_load_success = load_font()
-        if not font_load_success:
-            print("폰트 로딩에 실패했습니다.")
-            # load_font에서 이미 재설치가 시도되므로 여기서는 종료
-            return False
-        
-        # pandas 확장 기능 설정
-        set_pandas_extension()
-        
-        # 폰트 설정 확인
-        current_font = plt.rcParams.get('font.family', 'default')
-        if isinstance(current_font, list):
-            current_font = current_font[0] if current_font else 'default'
-        print(f"설정된 폰트: {current_font}")
-        
-        print("모든 설정이 완료되었습니다!")
-        print("사용 가능한 기능:")
-        print("   - 한글 폰트 지원 (나눔바른고딕/나눔고딕)")
-        print("   - helper.pd_read_csv(): 파일 읽기")
-        print("   - DataFrame.head_att(): 한글 컬럼 설명")
-        print("   - helper.cache_*(): 데이터 캐시 기능")
-        
-        return True
+        print("❌ 설정 실패")
+        return False
         
     except Exception as e:
-        print(f"설정 중 오류: {str(e)}")
-        print("오류가 발생했습니다.")
+        print(f"❌ 설정 오류: {str(e)}")
         return False
 
 # 캐시 관련 helper API 함수들
