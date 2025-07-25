@@ -45,6 +45,10 @@ import sys
 import time
 import shutil
 import gzip
+import urllib.request
+import warnings
+import subprocess
+import numpy as np
 
 # 전역 변수
 __version__ = "2.2.0"
@@ -89,9 +93,6 @@ def _format_value(value):
 def font_download():
     """폰트를 다운로드하거나 설치합니다."""
     global font_path
-    import urllib.request
-    import subprocess
-    import warnings
     
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
@@ -103,12 +104,7 @@ def font_download():
             
         try:
             # 나눔 폰트 패키지 설치 및 캐시 업데이트 (출력 최소화)
-            
-        if os.system("dpkg -l | grep fonts-nanum") == 0:
-            print("fonts-nanum이 이미 설치되어 있습니다.")
-            return
             print("install fonts-nanum")
-            # subprocess.run(['sudo', 'apt-get', 'update ', '-qq'], =subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', "-qq"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['sudo', 'fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)            
@@ -130,10 +126,6 @@ def font_download():
 
 def _colab_font_reinstall():
     """Colab에서 폰트 재설치"""
-    import subprocess
-    import time
-    import warnings
-    
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
@@ -161,17 +153,50 @@ def reset_matplotlib():
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as fm
     
-    # 폰트 설정
-    plt.rcParams['font.family'] = 'NanumBarunGothic'
+    # 폰트 캐시 클리어 (중요!)
+    try:
+        fm._get_fontconfig_fonts.cache_clear()
+    except:
+        pass
+    
+    try:
+        fm.fontManager.__init__()
+    except:
+        pass
+    
+    # 환경별 폰트 설정
+    if _in_colab():
+        # Colab 환경: 시스템에 설치된 나눔 폰트 사용
+        plt.rcParams['font.family'] = 'NanumBarunGothic'
+    else:
+        # 로컬 환경: 다운로드한 폰트 파일 사용
+        global font_path
+        if font_path and os.path.exists(font_path):
+            # 폰트 파일을 시스템에 등록
+            fm.fontManager.addfont(font_path)
+            plt.rcParams['font.family'] = 'NanumGothic'
+        else:
+            # 폰트 파일이 없으면 시스템 한글 폰트 시도
+            available_fonts = [f.name for f in fm.fontManager.ttflist]
+            korean_fonts = ['Malgun Gothic', 'AppleGothic', 'NanumGothic', 'Noto Sans CJK KR']
+            
+            for font in korean_fonts:
+                if font in available_fonts:
+                    plt.rcParams['font.family'] = font
+                    break
+            else:
+                plt.rcParams['font.family'] = 'DejaVu Sans'
+                print("⚠️ 한글 폰트를 찾을 수 없습니다. font_download()를 먼저 실행하세요.")
+    
     plt.rcParams['axes.unicode_minus'] = False
     plt.rcParams['font.size'] = 10  # 기본 폰트 사이즈 10으로 설정    
+    
+    print("✅ matplotlib 한글 폰트 설정 완료")
     return plt
 
 def load_font():
     """폰트를 로딩하고 설정합니다."""
     global font_path, is_colab
-    import matplotlib.font_manager as fm
-    import warnings
 
     try:
         # matplotlib 경고 억제
@@ -297,9 +322,9 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
             print(f"❌ 데이터 읽기 실패: {str(e)}")
             return None
 
-def dir_start(object, cmd):
+def dir_start(obj, cmd):
     """라이브러리 도움말을 검색합니다."""
-    for c in [att for att in dir(object) if att.startswith(cmd)]:
+    for c in [att for att in dir(obj) if att.startswith(cmd)]:
         print(f"{c}")
 
 def set_pandas_extension():
@@ -343,7 +368,6 @@ def set_pandas_extension():
 
 def setup():
     """한번에 모든 설정 완료"""
-    import warnings
     
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
@@ -357,7 +381,6 @@ def setup():
             font_load_success = load_font()
             if font_load_success:
                 # pandas 확장 기능을 조용히 설정
-                import warnings
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     # 기본 기능 추가 (출력 없이)
@@ -1473,13 +1496,6 @@ def remove_head_ext(self, columns_name):
             print(f" 컬럼 세트 '{name}' 삭제 완료")
         else:
             print(f" '{name}' 컬럼 세트를 찾을 수 없습니다.")
-            
-import hashlib
-import json
-import os
-import numpy as np
-import pandas as pd
-from typing import Any
 
 class DataCatch:
     _default_cache_file = "cache.json"
@@ -2041,4 +2057,75 @@ class DataCatch:
             print(f"오류: 최적화 실패: {e}")
             return False
     
-setup()    
+    @classmethod
+    def exists(cls, key, cache_file=None):
+        """키가 캐시에 존재하는지 확인"""
+        cls._initialize_cache(cache_file)
+        return key in cls._cache
+    
+    @classmethod
+    def delete(cls, key, cache_file=None):
+        """특정 키 삭제"""
+        cls._initialize_cache(cache_file)
+        if key in cls._cache:
+            del cls._cache[key]
+            cls._save_cache()
+            return True
+        return False
+    
+    @classmethod
+    def delete_keys(cls, *keys, cache_file=None):
+        """여러 키를 한번에 삭제"""
+        cls._initialize_cache(cache_file)
+        deleted_count = 0
+        for key in keys:
+            if key in cls._cache:
+                del cls._cache[key]
+                deleted_count += 1
+        if deleted_count > 0:
+            cls._save_cache()
+        return deleted_count
+    
+    @classmethod
+    def list_keys(cls, cache_file=None):
+        """모든 키 목록 반환"""
+        cls._initialize_cache(cache_file)
+        return list(cls._cache.keys())
+    
+    @classmethod
+    def compress_cache(cls, cache_file=None):
+        """캐시 파일 압축"""
+        cls._initialize_cache(cache_file)
+        
+        if not os.path.exists(cls._cache_file):
+            print("압축할 캐시 파일이 없습니다.")
+            return False
+        
+        try:
+            compressed_file = cls._cache_file + ".gz"
+            
+            with open(cls._cache_file, 'rb') as f_in:
+                with gzip.open(compressed_file, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+            
+            original_size = os.path.getsize(cls._cache_file)
+            compressed_size = os.path.getsize(compressed_file)
+            savings = ((original_size - compressed_size) / original_size) * 100
+            
+            print(f"압축 완료: {original_size / 1024 / 1024:.2f}MB → {compressed_size / 1024 / 1024:.2f}MB ({savings:.1f}% 절약)")
+            return True
+            
+        except Exception as e:
+            print(f"압축 실패: {e}")
+            return False
+    
+    @classmethod
+    def cleanup_cache(cls, days=30, cache_file=None):
+        """오래된 캐시 정리"""
+        cls._initialize_cache(cache_file)
+        print("현재는 수동 정리만 지원합니다. cache_clear()를 사용하세요.")
+        return True
+
+# 모듈 import 시 자동으로 setup 실행
+if __name__ != "__main__":
+    setup()    
