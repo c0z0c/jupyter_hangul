@@ -383,14 +383,14 @@ def setup():
                 
                 print("✅ 한글 폰트 및 pandas 확장 기능 설정 완료")
                 print("🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능")
-                return True
+                return
         
         print("❌ 설정 실패")
-        return False
+        return
         
     except Exception as e:
         print(f"❌ 설정 오류: {str(e)}")
-        return False
+        return
 
 # 캐시 관련 helper API 함수들
 def cache_key(*datas, **kwargs):
@@ -2025,4 +2025,4 @@ class DataCatch:
             print(f"오류: 최적화 실패: {e}")
             return False
     
-    
+setup()    
