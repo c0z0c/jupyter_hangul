@@ -38,9 +38,7 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
 import os
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import seaborn as sns
 import json
 import hashlib
 import sys
@@ -105,10 +103,19 @@ def font_download():
             
         try:
             # 나눔 폰트 패키지 설치 및 캐시 업데이트 (출력 최소화)
-            subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', '-qq'], 
-                          capture_output=True, text=True)
-            subprocess.run(['sudo', 'fc-cache', '-fv', '-qq'], 
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+        if os.system("dpkg -l | grep fonts-nanum") == 0:
+            print("fonts-nanum이 이미 설치되어 있습니다.")
+            return
+        
+            print("install fonts-nanum")
+            subprocess.run(['sudo', 'apt-get', 'update ', '-qq'], =subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', "-qq"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['sudo', 'fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)            
+            import matplotlib.font_manager as fm
+            fm._rebuild()
+            
             return True
             
         except Exception as e:
