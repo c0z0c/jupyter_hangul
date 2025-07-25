@@ -133,5 +133,5 @@ helper.cache_clear()           # 캐시 전체 삭제
 
 ## 📍 캐시 저장 위치
 
-- **Colab**: `/content/drive/MyDrive/jupyter_cache/` (Google Drive 영구 저장)
-- **로컬**: `./jupyter_cache/` (현재 디렉토리)
+- **Colab**: `/content/drive/MyDrive/cache.json` (Google Drive 영구 저장)
+- **로컬**: `./cache.json` (현재 디렉토리)
