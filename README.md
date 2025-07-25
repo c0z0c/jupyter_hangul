@@ -4,7 +4,7 @@
 
 Jupyter Notebook과 Google Colab에서 한글 폰트 설정 및 pandas 확장 기능을 제공하는 모듈입니다.
 
-https://youtu.be/8kfbuseTN-A
+https://youtu.be/C6XRhqoKBc4
 
 ## 🎯 빠른 사용법
 
@@ -38,15 +38,15 @@ import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 
 ### 1. 모듈 다운로드 및 설치
 
+- 권장 (화면 로그 출력 없음)
+```python
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+```
+또는 
+
 ```python
 # Jupyter Notebook 또는 Google Colab에서 실행
 !wget https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py > /dev/null 2>&1
-```
-
-또는
-
-```python
-from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
 ```
 
 ### 2. 모듈 import 및 설정
@@ -58,6 +58,15 @@ import helper_c0z0c_dev as helper # 한번에 모든 설정 완료!
 ```
 
 ## 사용 예제
+```python
+# 마스터 버전
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+import helper_c0z0c_dev as helper
+
+# 베타 버전 (먼저 사용해 보기)
+# from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+#import helper_c0z0c_dev as helper
+```
 
 ### 한글 폰트 사용
 
@@ -261,12 +270,11 @@ helper.setup()  # 문제 해결
    ```
 
 ## 감사 인사
-
-조하나 강사님의 기능 테스트에 도움을 주신 것에 감사드립니다.
+기능 테스트에 도움을 주신 조하나 강사님 감사드립니다.
 
 ## 업데이트 내역
 
-### v2.2.0 (2025.07.22)
+### v2.2.0 (2025.07.25)
 - 🚀 **안정적 한글 폰트 시스템**: 재부팅 없이 폰트 로딩
 - 📝 **간소화된 출력**: 15줄 → 3줄로 메시지 간소화
 - 💾 **캐시 기능 추가**: ML 모델 및 데이터 캐싱 시스템 구현

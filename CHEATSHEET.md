@@ -4,7 +4,7 @@
 
 ```python
 from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
-import helper_c0z0c_dev as helper; helper.setup() # 한번에 모든 설정 완료
+import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 ```
 
 **🎉 출력 예시**:

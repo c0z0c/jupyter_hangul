@@ -7,7 +7,7 @@
 **방법**
 ```python
 from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
-import helper_c0z0c_dev as helper; helper.setup() # 한번에 모든 설정 완료
+import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 ```
 
 **🎉 출력 예시**:
@@ -197,7 +197,7 @@ print(f"캐시된 데이터 형태: {cached_df.shape}")
 - Google Drive 접근 권한
 
 ### 💡 팁
-조하나 강사님의 철저한 테스트를 통해 안정성이 검증되었습니다. 대부분의 문제는 `helper.setup()` 재실행으로 해결됩니다.
+대부분의 문제는 `helper.setup()` 으로 해결됩니다.
 
 ---
 *작성자: 김명환 | 날짜: 2025.07.25 | 버전: v2.2.0*
