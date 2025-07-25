@@ -100,19 +100,14 @@ def font_download():
     if _in_colab():
         # 이미 설치되어 있는지 확인
         if os.system("dpkg -l | grep fonts-nanum") == 0:
-            print("✅ 한글 폰트가 이미 설치되어 있습니다.")
             return True
             
-        print("🚀 한글 폰트 설치 중... (약 30-60초 소요)")
-        
         try:
-            # 나눔 폰트 패키지 설치 및 캐시 업데이트
+            # 나눔 폰트 패키지 설치 및 캐시 업데이트 (출력 최소화)
             subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', '-qq'], 
                           capture_output=True, text=True)
             subprocess.run(['sudo', 'fc-cache', '-fv', '-qq'], 
                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            
-            print("✅ 폰트 설치 완료!")
             return True
             
         except Exception as e:
@@ -125,11 +120,7 @@ def font_download():
         font_path = os.path.join(font_dir, "NanumGothic.ttf")
         
         if not os.path.exists(font_path):
-            print("📥 한글 폰트 다운로드 중...")
             urllib.request.urlretrieve(font_url, font_path)
-            print("✅ 다운로드 완료!")
-        else:
-            print("✅ 폰트 파일이 이미 존재합니다.")
         
         return True
 
@@ -138,33 +129,29 @@ def _colab_font_reinstall():
     import subprocess
     import time
     import warnings
-    from IPython.display import display, Markdown
     
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
-    print("🔄 폰트 재설치 및 런타임 재시작 중...")
-    print("💡 재시작 후 helper.setup()을 다시 실행하세요.")
+    print("🔄 폰트 문제 발생 - 런타임 재시작 후 다시 시도하세요")
     
     try:
-        # 캐시 정리 및 패키지 재설치
+        # 캐시 정리 및 패키지 재설치 (출력 없이)
         subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-nanum'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', '-qq'], 
                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
-        time.sleep(2)
+        time.sleep(1)
         os.kill(os.getpid(), 9)
         
-    except Exception as reinstall_error:
-        print(f"❌ 재설치 오류: {str(reinstall_error)}")
-        print("💡 수동으로 런타임을 재시작하고 다시 시도하세요.")
+    except Exception:
+        pass
 
 def load_font():
     """폰트를 로딩하고 설정합니다."""
     global font_path, is_colab
     import matplotlib.font_manager as fm
-    from IPython.display import display, Markdown
     import warnings
 
     try:
@@ -174,12 +161,12 @@ def load_font():
         if _in_colab():
             is_colab = True
             
-            # Google Drive 마운트 시도 (선택적)
+            # Google Drive 마운트 시도 (출력 없이)
             try:
                 from google.colab import drive
                 drive.mount("/content/drive", force_remount=True)
             except Exception:
-                pass  # 실패해도 진행
+                pass
             
             # 한글 폰트가 이미 설정되어 있는지 확인
             current_font = plt.rcParams.get('font.family', ['default'])
@@ -187,20 +174,15 @@ def load_font():
                 current_font = current_font[0] if current_font else 'default'
             
             if 'nanum' in current_font.lower() or 'gothic' in current_font.lower():
-                print(f"✅ 한글 폰트가 이미 설정되어 있습니다: {current_font}")
                 return True
             
-            print("🎨 한글 폰트 설정 중...")
-            
-            # 폰트 설정 시도
+            # 폰트 설정 시도 (출력 최소화)
             try:
                 plt.rc('font', family='NanumBarunGothic')
                 plt.rcParams['axes.unicode_minus'] = False
-                print("✅ 폰트 설정 완료: NanumBarunGothic")
                 return True
                     
             except Exception as font_error:
-                print("❌ 한글 폰트 로딩 실패 - 재설치를 시도합니다...")
                 _colab_font_reinstall()
                 return False
             
@@ -211,7 +193,6 @@ def load_font():
                 current_font = current_font[0] if current_font else "default"
                 
             if current_font == "NanumGothic":
-                print("✅ 한글 폰트가 이미 설정되어 있습니다.")
                 return True
 
             try:
@@ -219,13 +200,10 @@ def load_font():
                     fm.fontManager.addfont(font_path)
                     plt.rcParams["font.family"] = "NanumGothic"
                     plt.rcParams['axes.unicode_minus'] = False
-                    print("✅ 폰트 설정 완료!")
                     return True
                 else:
-                    print("❌ 폰트 파일을 찾을 수 없습니다. font_download()를 먼저 실행하세요.")
                     return False
             except Exception as e:
-                print(f"❌ 폰트 설정 실패: {str(e)}")
                 return False
                 
     except Exception as e:
@@ -356,13 +334,54 @@ def setup():
     print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
     
     try:
-        # 폰트 다운로드/설치 및 로딩
+        # 폰트 다운로드/설치 및 로딩 (출력 최소화)
         font_download_success = font_download()
         if font_download_success:
             font_load_success = load_font()
             if font_load_success:
-                set_pandas_extension()
-                print("🎉 설정 완료! 한글폰트 및 pandas 확장 기능 사용 가능")
+                # pandas 확장 기능을 조용히 설정
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    # 기본 기능 추가 (출력 없이)
+                    for cls in [pd.DataFrame, pd.Series]:
+                        setattr(cls, "set_head_att", set_head_att)
+                        setattr(cls, "get_head_att", get_head_att)
+                        setattr(cls, "remove_head_att", remove_head_att)
+                        setattr(cls, "clear_head_att", clear_head_att)
+                        setattr(cls, "clear_head_ext", clear_head_ext)
+                    
+                    # DataFrame/Series별 출력 함수
+                    setattr(pd.DataFrame, "head_att", pd_head_att)
+                    setattr(pd.DataFrame, "_print_head_att", _print_head_att)
+                    setattr(pd.DataFrame, "_html_head_att", _html_head_att)
+                    setattr(pd.DataFrame, "_string_head_att", _string_head_att)
+                    setattr(pd.DataFrame, "_init_column_attrs", _init_column_attrs)
+                    setattr(pd.DataFrame, "_convert_columns", _convert_columns)
+                    setattr(pd.DataFrame, "_update_column_descriptions", _update_column_descriptions)
+                    setattr(pd.DataFrame, "_set_head_ext_bulk", _set_head_ext_bulk)
+                    setattr(pd.DataFrame, "_set_head_ext_individual", _set_head_ext_individual)
+                    setattr(pd.Series, "head_att", series_head_att)
+                    
+                    # 컬럼 세트 관리 기능
+                    for cls in [pd.DataFrame, pd.Series]:
+                        setattr(cls, "set_head_ext", set_head_ext)
+                        setattr(cls, "set_head_column", set_head_column)
+                        setattr(cls, "get_current_column_set", get_current_column_set)
+                        setattr(cls, "get_head_ext", get_head_ext)
+                        setattr(cls, "list_head_ext", list_head_ext)
+                        setattr(cls, "clear_head_ext", clear_head_ext)
+                        setattr(cls, "remove_head_ext", remove_head_ext)
+                    
+                    # Series에도 새 함수들 추가
+                    setattr(pd.Series, "_set_head_ext_bulk", _set_head_ext_bulk)
+                    setattr(pd.Series, "_set_head_ext_individual", _set_head_ext_individual)
+                    setattr(pd.Series, "_init_column_attrs", _init_column_attrs)
+                    setattr(pd.Series, "_convert_columns", _convert_columns)
+                    setattr(pd.Series, "_update_column_descriptions", _update_column_descriptions)
+                
+                print("✅ 한글 폰트 및 pandas 확장 기능 설정 완료")
+                print("🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능")
                 return True
         
         print("❌ 설정 실패")
