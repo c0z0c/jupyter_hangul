@@ -107,15 +107,11 @@ def font_download():
         if os.system("dpkg -l | grep fonts-nanum") == 0:
             print("fonts-nanum이 이미 설치되어 있습니다.")
             return
-        
             print("install fonts-nanum")
-            subprocess.run(['sudo', 'apt-get', 'update ', '-qq'], =subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # subprocess.run(['sudo', 'apt-get', 'update ', '-qq'], =subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', "-qq"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['sudo', 'fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)            
-            import matplotlib.font_manager as fm
-            fm._rebuild()
-            
             return True
             
         except Exception as e:
@@ -145,16 +141,31 @@ def _colab_font_reinstall():
     
     try:
         # 캐시 정리 및 패키지 재설치 (출력 없이)
-        subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-nanum'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', '-qq'], 
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
+        subprocess.run(['sudo', 'apt-get', 'remove', '--purge', '-y', 'fonts-nanum'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', "-qq"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(['sudo', 'fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)            
         time.sleep(1)
         os.kill(os.getpid(), 9)
-        
     except Exception:
         pass
+
+def reset_matplotlib():
+    """matplotlib 완전 리셋"""
+    # matplotlib 모듈들을 sys.modules에서 제거
+    modules_to_remove = [mod for mod in sys.modules if mod.startswith('matplotlib')]
+    for mod in modules_to_remove:
+        del sys.modules[mod]
+    
+    # 다시 import
+    import matplotlib.pyplot as plt
+    import matplotlib.font_manager as fm
+    
+    # 폰트 설정
+    plt.rcParams['font.family'] = 'NanumBarunGothic'
+    plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['font.size'] = 10  # 기본 폰트 사이즈 10으로 설정    
+    return plt
 
 def load_font():
     """폰트를 로딩하고 설정합니다."""
@@ -176,6 +187,7 @@ def load_font():
             except Exception:
                 pass
             
+            
             # 한글 폰트가 이미 설정되어 있는지 확인
             current_font = plt.rcParams.get('font.family', ['default'])
             if isinstance(current_font, list):
@@ -186,8 +198,7 @@ def load_font():
             
             # 폰트 설정 시도 (출력 최소화)
             try:
-                plt.rc('font', family='NanumBarunGothic')
-                plt.rcParams['axes.unicode_minus'] = False
+                reset_matplotlib()
                 return True
                     
             except Exception as font_error:
@@ -205,9 +216,7 @@ def load_font():
 
             try:
                 if font_path and os.path.exists(font_path):
-                    fm.fontManager.addfont(font_path)
-                    plt.rcParams["font.family"] = "NanumGothic"
-                    plt.rcParams['axes.unicode_minus'] = False
+                    reset_matplotlib()
                     return True
                 else:
                     return False
