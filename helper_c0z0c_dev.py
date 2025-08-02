@@ -431,10 +431,10 @@ def set_pandas_extension():
 
     # pandas commit 시스템 API 바인딩
     setattr(pd.DataFrame, "commit", _df_commit)
+    setattr(pd.DataFrame, "commit_update", _df_commit_update)
     setattr(pd.DataFrame, "checkout", classmethod(_df_checkout))
     setattr(pd.DataFrame, "commit_list", classmethod(_df_commit_list))
     setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
-    setattr(pd.DataFrame, "commit_update", _df_commit_update)
     setattr(pd.DataFrame, "commit_has", classmethod(_df_commit_has))
 
 def setup():
@@ -478,6 +478,14 @@ def _df_commit(self, msg, commit_dir=None):
     """
     return pd_commit(self, msg, commit_dir)
 
+def _df_commit_update(self, msg, commit_dir=None):
+    """
+    DataFrame의 현재 상태를 커밋 또는 업데이트합니다.
+    사용법:
+        df.commit_update("커밋 메시지")
+    """
+    return pd_commit_update(msg, self, commit_dir)
+
 @classmethod
 def _df_checkout(cls, idx_or_hash, commit_dir=None):
     """
@@ -504,15 +512,6 @@ def _df_commit_rm(cls, idx_or_hash, commit_dir=None):
         pd.DataFrame.commit_rm(0)
     """
     return pd_commit_rm(idx_or_hash, commit_dir)
-
-
-def _df_commit_update(self, msg, commit_dir=None):
-    """
-    DataFrame의 현재 상태를 커밋 또는 업데이트합니다.
-    사용법:
-        df.commit_update("커밋 메시지")
-    """
-    return pd_commit_update(self, msg, commit_dir)
 
 @classmethod
 def _df_commit_has(cls, idx_or_hash, commit_dir=None):
@@ -2253,6 +2252,8 @@ def pd_commit(df, msg, commit_dir=None):
     commit_dir: 저장할 폴더 지정 (None이면 기본)
     동일한 메시지가 있으면 기존 커밋을 새 커밋으로 대체(업데이트)합니다.
     """
+    if df is None or not isinstance(df, pd.DataFrame):
+        raise ValueError("df 인자가 None이거나 유효한 DataFrame이 아닙니다.")
     dt = datetime.datetime.now()
     dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")  # ISO8601 포맷
     commit_hash = _generate_commit_hash(dt, msg)
@@ -2285,17 +2286,17 @@ def pd_commit(df, msg, commit_dir=None):
     print(f"✅ 커밋 완료: {commit_hash} | {dt_str} | {msg}")
     return df
 
+import pandas as pd
 def pd_commit_update(df, msg, commit_dir=None):
     """
-    def pd_commit_update(df, msg, commit_dir=None):
-    pd_commit과 동일한 인자를 받고
-    pd_commit_has로 검사해서 존재하면 checkout
-    없으면 pd_commit과 동일하게 동작
+    DataFrame을 커밋하거나, 동일 메시지가 있으면 해당 커밋을checkout합니다.
     """
+    # 기존 메시지 커밋이 있으면 복원
     if pd_commit_has(msg, commit_dir):
         return pd_checkout(msg, commit_dir)
+    # 새로운 커밋 생성
     return pd_commit(df, msg, commit_dir)
-    
+
 
 def pd_commit_list(commit_dir=None):
     """
