@@ -1,4 +1,3 @@
-
 """
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
@@ -50,11 +49,17 @@ import urllib.request
 import warnings
 import subprocess
 import numpy as np
+import datetime
+import pickle
 
 # 전역 변수
 __version__ = "2.3.0"
 font_path = ""
 is_colab = False
+
+# pandas commit 시스템 전역 변수
+_COMMIT_META_FILE = "pandas_df.json"
+pd_root_base = None
 
 # 공통 유틸리티 함수
 def _in_colab():
@@ -322,6 +327,69 @@ def dir_start(obj, cmd):
     for c in [att for att in dir(obj) if att.startswith(cmd)]:
         print(f"{c}")
 
+def set_pd_root_base(subdir=None):
+    """
+    pd_root의 기본 경로를 설정합니다. 프로그램 실행 중 지속적으로 영향을 줍니다.
+    - subdir이 None이면: Colab은 /content/drive/MyDrive, Jupyter는 현재 폴더
+    - subdir이 문자열이면: Colab은 /content/drive/MyDrive/subdir, Jupyter는 ./subdir
+    - subdir이 '/'로 시작하면: Colab은 /content/drive/MyDrive/ + subdir, Jupyter는 . + subdir
+    """
+    global pd_root_base
+    if _in_colab():
+        base = "/content/drive/MyDrive"
+        if subdir is None or subdir == "":
+            pd_root_base = base
+        elif subdir.startswith("/"):
+            pd_root_base = base + subdir
+        else:
+            pd_root_base = os.path.join(base, subdir)
+    else:
+        base = "."
+        if subdir is None or subdir == "":
+            pd_root_base = base
+        elif subdir.startswith("/"):
+            pd_root_base = base + subdir
+        else:
+            pd_root_base = os.path.join(base, subdir)
+
+def pd_root(commit_dir=None):
+    """
+    pandas commit 시스템의 기본 경로를 반환합니다.
+    commit_dir이 지정되면 해당 경로를, 없으면 pd_root_base를 반환합니다.
+    """
+    if commit_dir is not None:
+        return commit_dir
+    if pd_root_base is not None:
+        return pd_root_base
+    # 기본값 설정
+    if _in_colab():
+        return "/content/drive/MyDrive"
+    else:
+        return "."
+
+def _load_commit_meta(commit_dir=None):
+    """커밋 메타데이터를 로드합니다."""
+    meta_file = os.path.join(pd_root(commit_dir), _COMMIT_META_FILE)
+    if os.path.exists(meta_file):
+        try:
+            with open(meta_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+    return []
+
+def _save_commit_meta(meta, commit_dir=None):
+    """커밋 메타데이터를 저장합니다."""
+    meta_file = os.path.join(pd_root(commit_dir), _COMMIT_META_FILE)
+    os.makedirs(os.path.dirname(meta_file), exist_ok=True)
+    with open(meta_file, "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+def _generate_commit_hash(dt, msg):
+    """커밋 해시를 생성합니다."""
+    base = f"{dt.strftime('%Y%m%d_%H%M%S')}_{msg}"
+    return hashlib.md5(base.encode("utf-8")).hexdigest()[:12]
+
 def set_pandas_extension():
     """pandas DataFrame/Series에 한글 컬럼 설명 기능을 추가합니다."""
     # 기본 기능
@@ -361,6 +429,14 @@ def set_pandas_extension():
     setattr(pd.Series, "_convert_columns", _convert_columns)
     setattr(pd.Series, "_update_column_descriptions", _update_column_descriptions)
 
+    # pandas commit 시스템 API 바인딩
+    setattr(pd.DataFrame, "commit", _df_commit)
+    setattr(pd.DataFrame, "checkout", classmethod(_df_checkout))
+    setattr(pd.DataFrame, "commit_list", classmethod(_df_commit_list))
+    setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
+    setattr(pd.DataFrame, "commit_update", _df_commit_update)
+    setattr(pd.DataFrame, "commit_has", classmethod(_df_commit_has))
+
 def setup():
     """한번에 모든 설정 완료"""
     
@@ -375,45 +451,10 @@ def setup():
         if font_download_success:
             font_load_success = load_font()
             if font_load_success:
-                # pandas 확장 기능을 조용히 설정
+                # pandas 확장 기능 설정
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    # 기본 기능 추가 (출력 없이)
-                    for cls in [pd.DataFrame, pd.Series]:
-                        setattr(cls, "set_head_att", set_head_att)
-                        setattr(cls, "get_head_att", get_head_att)
-                        setattr(cls, "remove_head_att", remove_head_att)
-                        setattr(cls, "clear_head_att", clear_head_att)
-                        setattr(cls, "clear_head_ext", clear_head_ext)
-                    
-                    # DataFrame/Series별 출력 함수
-                    setattr(pd.DataFrame, "head_att", pd_head_att)
-                    setattr(pd.DataFrame, "_print_head_att", _print_head_att)
-                    setattr(pd.DataFrame, "_html_head_att", _html_head_att)
-                    setattr(pd.DataFrame, "_string_head_att", _string_head_att)
-                    setattr(pd.DataFrame, "_init_column_attrs", _init_column_attrs)
-                    setattr(pd.DataFrame, "_convert_columns", _convert_columns)
-                    setattr(pd.DataFrame, "_update_column_descriptions", _update_column_descriptions)
-                    setattr(pd.DataFrame, "_set_head_ext_bulk", _set_head_ext_bulk)
-                    setattr(pd.DataFrame, "_set_head_ext_individual", _set_head_ext_individual)
-                    setattr(pd.Series, "head_att", series_head_att)
-                    
-                    # 컬럼 세트 관리 기능
-                    for cls in [pd.DataFrame, pd.Series]:
-                        setattr(cls, "set_head_ext", set_head_ext)
-                        setattr(cls, "set_head_column", set_head_column)
-                        setattr(cls, "get_current_column_set", get_current_column_set)
-                        setattr(cls, "get_head_ext", get_head_ext)
-                        setattr(cls, "list_head_ext", list_head_ext)
-                        setattr(cls, "clear_head_ext", clear_head_ext)
-                        setattr(cls, "remove_head_ext", remove_head_ext)
-                    
-                    # Series에도 새 함수들 추가
-                    setattr(pd.Series, "_set_head_ext_bulk", _set_head_ext_bulk)
-                    setattr(pd.Series, "_set_head_ext_individual", _set_head_ext_individual)
-                    setattr(pd.Series, "_init_column_attrs", _init_column_attrs)
-                    setattr(pd.Series, "_convert_columns", _convert_columns)
-                    setattr(pd.Series, "_update_column_descriptions", _update_column_descriptions)
+                    set_pandas_extension()
                 
                 print("✅ 한글 폰트 및 pandas 확장 기능 설정 완료")
                 print("🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능")
@@ -425,6 +466,62 @@ def setup():
     except Exception as e:
         print(f"❌ 설정 오류: {str(e)}")
         return
+
+# pandas commit 시스템 DataFrame 메소드 wrappers
+import pandas as pd  # ensure pandas is imported
+
+def _df_commit(self, msg, commit_dir=None):
+    """
+    DataFrame의 현재 상태를 커밋합니다.
+    사용법:
+        df.commit("커밋 메시지")
+    """
+    return pd_commit(self, msg, commit_dir)
+
+@classmethod
+def _df_checkout(cls, idx_or_hash, commit_dir=None):
+    """
+    DataFrame 커밋 기록에서 특정 커밋을 체크아웃합니다.
+    사용법:
+        pd.DataFrame.checkout(0)
+    """
+    return pd_checkout(idx_or_hash, commit_dir)
+
+@classmethod
+def _df_commit_list(cls, commit_dir=None):
+    """
+    DataFrame의 커밋 목록을 반환합니다.
+    사용법:
+        pd.DataFrame.commit_list()
+    """
+    return pd_commit_list(commit_dir)
+
+@classmethod
+def _df_commit_rm(cls, idx_or_hash, commit_dir=None):
+    """
+    DataFrame 커밋 기록에서 특정 커밋을 삭제합니다.
+    사용법:
+        pd.DataFrame.commit_rm(0)
+    """
+    return pd_commit_rm(idx_or_hash, commit_dir)
+
+
+def _df_commit_update(self, msg, commit_dir=None):
+    """
+    DataFrame의 현재 상태를 커밋 또는 업데이트합니다.
+    사용법:
+        df.commit_update("커밋 메시지")
+    """
+    return pd_commit_update(self, msg, commit_dir)
+
+@classmethod
+def _df_commit_has(cls, idx_or_hash, commit_dir=None):
+    """
+    DataFrame 커밋이 존재하는지 확인합니다.
+    사용법:
+        pd.DataFrame.commit_has("메시지")
+    """
+    return pd_commit_has(idx_or_hash, commit_dir)
 
 # 캐시 관련 helper API 함수들
 def cache_key(*datas, **kwargs):
@@ -445,7 +542,7 @@ def cache_key(*datas, **kwargs):
     Examples:
     ---------
     >>> import helper.c0z0c.dev as helper
-    >>> key = helper.cache_key("model_lasso", [0.1, 0.2], random_state=42)
+    >>> key = helper.cache_key("model_v1", params)
     >>> print(key)  # '1a2b3c4d5e...'
     """
     return DataCatch.key(*datas, **kwargs)
@@ -2121,143 +2218,12 @@ class DataCatch:
         print("현재는 수동 정리만 지원합니다. cache_clear()를 사용하세요.")
         return True
 
-###########################################################################################################
-
-# DataFrame에 pd_commit 관련 메소드 바인딩
-import pandas as pd
-
-def _df_commit(self, msg, commit_dir=None):
-    """
-    DataFrame의 현재 상태를 커밋합니다.
-    사용법:
-        df.commit("커밋 메시지")
-    """
-    return pd_commit(self, msg, commit_dir)
-
-@classmethod
-def _df_checkout(cls, idx_or_hash, commit_dir=None):
-    """
-    DataFrame 커밋 기록에서 특정 커밋을 체크아웃합니다.
-    사용법:
-        df_new = pd.DataFrame.checkout(0)
-        또는 pd.DataFrame.checkout("해시값")
-    """
-    return pd_checkout(idx_or_hash, commit_dir)
-
-@classmethod
-def _df_commit_list(cls, commit_dir=None):
-    """
-    DataFrame의 커밋 목록을 반환합니다.
-    사용법:
-        commits = pd.DataFrame.commit_list()
-    """
-    return pd_commit_list(commit_dir)
-
-@classmethod
-def _df_commit_rm(cls, idx_or_hash, commit_dir=None):
-    """
-    DataFrame 커밋 기록에서 특정 커밋을 삭제합니다.
-    사용법:
-        pd.DataFrame.commit_rm("해시값")
-    """
-    return pd_commit_rm(idx_or_hash, commit_dir)
-
-setattr(pd.DataFrame, "commit", _df_commit)
-setattr(pd.DataFrame, "checkout", classmethod(_df_checkout))
-setattr(pd.DataFrame, "commit_list", classmethod(_df_commit_list))
-setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
-# pandas commit 시스템 추가
-###########################################################################################################
-
-
-# pandas commit 시스템 경로 및 환경별 지원 개선
-import datetime
-
-_COMMIT_META_FILE = "pandas_df.json"
-
-# pd_root의 기본 경로를 전역 변수로 저장
-pd_root_base = None
-
-def set_pd_root_base(subdir=None):
-    """
-    pd_root의 기본 경로를 설정합니다. 프로그램 실행 중 지속적으로 영향을 줍니다.
-    - subdir이 None이면: Colab은 /content/drive/MyDrive, Jupyter는 현재 폴더
-    - subdir이 문자열이면: Colab은 /content/drive/MyDrive/subdir, Jupyter는 ./subdir
-    - subdir이 '/'로 시작하면: Colab은 /content/drive/MyDrive/ + subdir, Jupyter는 . + subdir
-    """
-    global pd_root_base
-    if '_in_colab' in globals() and callable(_in_colab) and _in_colab():
-        base = "/content/drive/MyDrive"
-        if subdir is None or subdir == "":
-            pd_root_base = base
-        elif subdir.startswith("/"):
-            pd_root_base = base + subdir
-        else:
-            pd_root_base = os.path.join(base, subdir)
-    else:
-        base = "."
-        if subdir is None or subdir == "":
-            pd_root_base = base
-        elif subdir.startswith("/"):
-            pd_root_base = base + subdir
-        else:
-            pd_root_base = os.path.join(base, subdir)
-
-def pd_root(subdir=None):
-    """
-    pandas 관련 파일(커밋, 캐시 등) 저장 경로를 반환합니다.
-    항상 절대 경로(str)로 반환합니다.
-    - subdir이 None이면: pd_root_base가 있으면 그 값을 반환, 없으면 기본 규칙 적용
-    - subdir이 문자열이면: pd_root_base가 있으면 그 하위폴더, 없으면 기본 규칙 적용
-    """
-    global pd_root_base
-    if pd_root_base is not None:
-        if subdir is None or subdir == "":
-            return os.path.abspath(pd_root_base)
-        if subdir.startswith("/"):
-            return os.path.abspath(pd_root_base + subdir)
-        return os.path.abspath(os.path.join(pd_root_base, subdir))
-    # pd_root_base가 설정되지 않은 경우 기존 규칙 적용
-    if '_in_colab' in globals() and callable(_in_colab) and _in_colab():
-        base = "/content/drive/MyDrive"
-        if subdir is None or subdir == "":
-            return os.path.abspath(base)
-        if subdir.startswith("/"):
-            return os.path.abspath(base + subdir)
-        return os.path.abspath(os.path.join(base, subdir))
-    else:
-        base = "."
-        if subdir is None or subdir == "":
-            return os.path.abspath(base)
-        if subdir.startswith("/"):
-            return os.path.abspath(base + subdir)
-        return os.path.abspath(os.path.join(base, subdir))
-
-def _get_commit_meta_path(commit_dir=None):
-    # commit_dir이 None이면 pd_root() 사용, 아니면 pd_root(commit_dir)
-    path = os.path.join(pd_root(commit_dir), ".commit_pandas", _COMMIT_META_FILE)
-    return path
-
-def _load_commit_meta(commit_dir=None):
-    path = _get_commit_meta_path(commit_dir)
-    meta = DataCatch.load('commit_meta', cache_file=path)
-    if meta is None:
-        return []
-    return meta
-
-def _save_commit_meta(meta, commit_dir=None):
-    path = _get_commit_meta_path(commit_dir)
-    DataCatch.save('commit_meta', meta, cache_file=path)
-    #print(f"커밋 메타데이터 저장 완료: {path}")
-    #print(f"commit_meta: {meta}")
 
 def _generate_commit_hash(dt, msg):
+    """커밋 해시를 생성합니다."""
     base = f"{dt.strftime('%Y%m%d_%H%M%S')}_{msg}"
-    import hashlib
     return hashlib.md5(base.encode("utf-8")).hexdigest()[:12]
 
-# DataFrame의 attrs(딕셔너리)까지 함께 저장/복원하는 pickle 래퍼 함수
-import pickle
 def df_to_pickle(df, path):
     """
     DataFrame과 df.attrs(딕셔너리)까지 함께 pickle로 저장
@@ -2277,8 +2243,6 @@ def df_read_pickle(path):
         obj = pickle.load(f)
     df = obj["data"]
     if "attrs" in obj:
-        #df.setattr(obj["attrs"])
-        #self.attrs = {}
         df.attrs = obj["attrs"]
     return df
 
@@ -2287,19 +2251,30 @@ def pd_commit(df, msg, commit_dir=None):
     DataFrame의 현재 상태를 git처럼 커밋합니다.
     파일명: 해시키.pkl, 메타: pandas_df.json
     commit_dir: 저장할 폴더 지정 (None이면 기본)
+    동일한 메시지가 있으면 기존 커밋을 새 커밋으로 대체(업데이트)합니다.
     """
     dt = datetime.datetime.now()
     dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")  # ISO8601 포맷
     commit_hash = _generate_commit_hash(dt, msg)
     fname = f"{commit_hash}.pkl_helper"
-    # save_dir = pd_root(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
-    
     os.makedirs(save_dir, exist_ok=True)
-    df_to_pickle(df, os.path.join(save_dir, fname))
-    #df.to_pickle(os.path.join(save_dir, fname))
-    
+
     meta = _load_commit_meta(commit_dir)
+    # 동일한 메시지(msg)가 있으면 기존 파일 삭제 및 메타에서 제거
+    old_idx = None
+    for i, m in enumerate(meta):
+        if m["msg"] == msg:
+            old_file = os.path.join(save_dir, m["file"])
+            if os.path.exists(old_file):
+                os.remove(old_file)
+            old_idx = i
+            break
+    if old_idx is not None:
+        meta.pop(old_idx)
+
+    # 새 커밋 저장
+    df_to_pickle(df, os.path.join(save_dir, fname))
     meta.append({
         "hash": commit_hash,
         "datetime": dt_str,
@@ -2308,6 +2283,19 @@ def pd_commit(df, msg, commit_dir=None):
     })
     _save_commit_meta(meta, commit_dir)
     print(f"✅ 커밋 완료: {commit_hash} | {dt_str} | {msg}")
+    return df
+
+def pd_commit_update(df, msg, commit_dir=None):
+    """
+    def pd_commit_update(df, msg, commit_dir=None):
+    pd_commit과 동일한 인자를 받고
+    pd_commit_has로 검사해서 존재하면 checkout
+    없으면 pd_commit과 동일하게 동작
+    """
+    if pd_commit_has(msg, commit_dir):
+        return pd_checkout(msg, commit_dir)
+    return pd_commit(df, msg, commit_dir)
+    
 
 def pd_commit_list(commit_dir=None):
     """
@@ -2315,9 +2303,7 @@ def pd_commit_list(commit_dir=None):
     commit_dir: 저장 폴더 지정
     반환값: pandas.DataFrame (순서, 해시, 시간, 메시지, 파일)
     """
-    import pandas as pd
     meta = _load_commit_meta(commit_dir)
-    #save_dir = pd_root(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
     new_meta = []
     for m in meta:
@@ -2332,8 +2318,6 @@ def pd_commit_list(commit_dir=None):
         # datetime 컬럼을 pandas datetime 타입으로 변환
         df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
         df.insert(0, 'index', range(len(df)))
-        #for i, row in df.iterrows():
-        #    print(f"[{row['index']}] {row['hash']} | {row['datetime']} | {row['msg']}")
     else:
         print("커밋 내역이 없습니다.")
     return df
@@ -2356,7 +2340,7 @@ def pd_checkout(idx_or_hash, commit_dir=None):
             return df_read_pickle(os.path.join(save_dir, fname))
     raise ValueError("해당 커밋을 찾을 수 없습니다.")
 
-# TODO pd_commit_rm(index, 시간정보, 해시) 함수 추가
+
 def pd_commit_rm(idx_or_hash, commit_dir=None):
     """
     커밋된 컬럼 세트를 삭제합니다.
@@ -2382,7 +2366,27 @@ def pd_commit_rm(idx_or_hash, commit_dir=None):
             return
     raise ValueError("해당 커밋을 찾을 수 없습니다.")
 
-###########################################################################################################
+def pd_commit_has(idx_or_hash, commit_dir=None):
+    """
+    커밋 index, hash, datetime, msg 중 하나를 입력받아
+    해당 커밋 파일이 존재하면 True, 없으면 False 반환
+    """
+    meta = _load_commit_meta(commit_dir)
+    save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
+    # index로 검사
+    if isinstance(idx_or_hash, int):
+        if 0 <= idx_or_hash < len(meta):
+            fname = meta[idx_or_hash]["file"]
+            if os.path.exists(os.path.join(save_dir, fname)):
+                return True
+        return False
+    # hash, datetime, msg로 검사
+    for m in meta:
+        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"] or idx_or_hash == m["msg"]:
+            fname = m["file"]
+            if os.path.exists(os.path.join(save_dir, fname)):
+                return True
+    return False
 
 # 모듈 import 시 자동으로 setup 실행
 if __name__ != "__main__":
