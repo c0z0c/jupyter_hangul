@@ -369,7 +369,7 @@ def pd_root(commit_dir=None):
 
 def _load_commit_meta(commit_dir=None):
     """커밋 메타데이터를 로드합니다."""
-    meta_file = os.path.join(pd_root(commit_dir), _COMMIT_META_FILE)
+    meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), _COMMIT_META_FILE)
     if os.path.exists(meta_file):
         try:
             with open(meta_file, "r", encoding="utf-8") as f:
@@ -380,7 +380,7 @@ def _load_commit_meta(commit_dir=None):
 
 def _save_commit_meta(meta, commit_dir=None):
     """커밋 메타데이터를 저장합니다."""
-    meta_file = os.path.join(pd_root(commit_dir), _COMMIT_META_FILE)
+    meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), _COMMIT_META_FILE)
     os.makedirs(os.path.dirname(meta_file), exist_ok=True)
     with open(meta_file, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
