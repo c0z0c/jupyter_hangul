@@ -2122,6 +2122,50 @@ class DataCatch:
         return True
 
 ###########################################################################################################
+
+# DataFrame에 pd_commit 관련 메소드 바인딩
+import pandas as pd
+
+def _df_commit(self, msg, commit_dir=None):
+    """
+    DataFrame의 현재 상태를 커밋합니다.
+    사용법:
+        df.commit("커밋 메시지")
+    """
+    return pd_commit(self, msg, commit_dir)
+
+@classmethod
+def _df_checkout(cls, idx_or_hash, commit_dir=None):
+    """
+    DataFrame 커밋 기록에서 특정 커밋을 체크아웃합니다.
+    사용법:
+        df_new = pd.DataFrame.checkout(0)
+        또는 pd.DataFrame.checkout("해시값")
+    """
+    return pd_checkout(idx_or_hash, commit_dir)
+
+@classmethod
+def _df_commit_list(cls, commit_dir=None):
+    """
+    DataFrame의 커밋 목록을 반환합니다.
+    사용법:
+        commits = pd.DataFrame.commit_list()
+    """
+    return pd_commit_list(commit_dir)
+
+@classmethod
+def _df_commit_rm(cls, idx_or_hash, commit_dir=None):
+    """
+    DataFrame 커밋 기록에서 특정 커밋을 삭제합니다.
+    사용법:
+        pd.DataFrame.commit_rm("해시값")
+    """
+    return pd_commit_rm(idx_or_hash, commit_dir)
+
+setattr(pd.DataFrame, "commit", _df_commit)
+setattr(pd.DataFrame, "checkout", classmethod(_df_checkout))
+setattr(pd.DataFrame, "commit_list", classmethod(_df_commit_list))
+setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
 # pandas commit 시스템 추가
 ###########################################################################################################
 
