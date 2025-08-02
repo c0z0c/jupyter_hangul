@@ -2287,7 +2287,7 @@ def pd_commit(df, msg, commit_dir=None):
     return df
 
 import pandas as pd
-def pd_commit_update(df, msg, commit_dir=None):
+def pd_commit_update(msg, df=None, commit_dir=None):
     """
     DataFrame을 커밋하거나, 동일 메시지가 있으면 해당 커밋을checkout합니다.
     """
