@@ -2355,7 +2355,7 @@ def pd_commit_rm(idx_or_hash, commit_dir=None):
     if isinstance(idx_or_hash, int):
         if idx_or_hash < 0 or idx_or_hash >= len(meta):
             # raise IndexError("순서번호가 범위를 벗어났습니다.")
-            print("순서번호가 범위를 벗어났습니다.")
+            print(f"{idx_or_hash} 순서번호가 범위를 벗어났습니다.")
             return
         fname = meta[idx_or_hash]["file"]
         os.remove(os.path.join(save_dir, fname))
@@ -2370,7 +2370,7 @@ def pd_commit_rm(idx_or_hash, commit_dir=None):
             _save_commit_meta(meta, commit_dir)
             return
     #raise ValueError("해당 커밋을 찾을 수 없습니다.")
-    print("해당 커밋을 찾을 수 없습니다.")
+    print(f"{idx_or_hash} 해당 커밋을 찾을 수 없습니다.")
 
 def pd_commit_has(idx_or_hash, commit_dir=None):
     """
