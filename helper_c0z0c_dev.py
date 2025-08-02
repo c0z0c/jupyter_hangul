@@ -1,3 +1,4 @@
+
 """
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
@@ -51,7 +52,7 @@ import subprocess
 import numpy as np
 
 # 전역 변수
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 font_path = ""
 is_colab = False
 
@@ -294,20 +295,15 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
     """
     # 문자열 경로일 경우에만 경로 변환 처리 (URL 제외)
     if isinstance(filepath_or_buffer, str) and not filepath_or_buffer.startswith(('http://', 'https://', 'ftp://', 'file://')):
-        if is_colab:
-            full_path = f"/content/drive/MyDrive/{filepath_or_buffer}"
-        else:
-            full_path = filepath_or_buffer
-        
+        # pd_root_base/pd_root 정책 적용
+        full_path = os.path.join(pd_root(), filepath_or_buffer) if not os.path.isabs(filepath_or_buffer) else filepath_or_buffer
         try:
             if not os.path.exists(full_path):
                 print(f"❌ 파일을 찾을 수 없습니다: {full_path}")
                 return None
-            
             df = pd.read_csv(full_path, **kwargs)
             print(f"✅ 파일 읽기 성공: {df.shape[0]}행 × {df.shape[1]}열")
             return df
-            
         except Exception as e:
             print(f"❌ 파일 읽기 실패: {str(e)}")
             return None
@@ -317,7 +313,6 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
             df = pd.read_csv(filepath_or_buffer, **kwargs)
             print(f"✅ 데이터 읽기 성공: {df.shape[0]}행 × {df.shape[1]}열")
             return df
-            
         except Exception as e:
             print(f"❌ 데이터 읽기 실패: {str(e)}")
             return None
@@ -2126,6 +2121,226 @@ class DataCatch:
         print("현재는 수동 정리만 지원합니다. cache_clear()를 사용하세요.")
         return True
 
+###########################################################################################################
+# pandas commit 시스템 추가
+###########################################################################################################
+
+
+# pandas commit 시스템 경로 및 환경별 지원 개선
+import datetime
+
+_COMMIT_META_FILE = "pandas_df.json"
+
+# pd_root의 기본 경로를 전역 변수로 저장
+pd_root_base = None
+
+def set_pd_root_base(subdir=None):
+    """
+    pd_root의 기본 경로를 설정합니다. 프로그램 실행 중 지속적으로 영향을 줍니다.
+    - subdir이 None이면: Colab은 /content/drive/MyDrive, Jupyter는 현재 폴더
+    - subdir이 문자열이면: Colab은 /content/drive/MyDrive/subdir, Jupyter는 ./subdir
+    - subdir이 '/'로 시작하면: Colab은 /content/drive/MyDrive/ + subdir, Jupyter는 . + subdir
+    """
+    global pd_root_base
+    if '_in_colab' in globals() and callable(_in_colab) and _in_colab():
+        base = "/content/drive/MyDrive"
+        if subdir is None or subdir == "":
+            pd_root_base = base
+        elif subdir.startswith("/"):
+            pd_root_base = base + subdir
+        else:
+            pd_root_base = os.path.join(base, subdir)
+    else:
+        base = "."
+        if subdir is None or subdir == "":
+            pd_root_base = base
+        elif subdir.startswith("/"):
+            pd_root_base = base + subdir
+        else:
+            pd_root_base = os.path.join(base, subdir)
+
+def pd_root(subdir=None):
+    """
+    pandas 관련 파일(커밋, 캐시 등) 저장 경로를 반환합니다.
+    항상 절대 경로(str)로 반환합니다.
+    - subdir이 None이면: pd_root_base가 있으면 그 값을 반환, 없으면 기본 규칙 적용
+    - subdir이 문자열이면: pd_root_base가 있으면 그 하위폴더, 없으면 기본 규칙 적용
+    """
+    global pd_root_base
+    if pd_root_base is not None:
+        if subdir is None or subdir == "":
+            return os.path.abspath(pd_root_base)
+        if subdir.startswith("/"):
+            return os.path.abspath(pd_root_base + subdir)
+        return os.path.abspath(os.path.join(pd_root_base, subdir))
+    # pd_root_base가 설정되지 않은 경우 기존 규칙 적용
+    if '_in_colab' in globals() and callable(_in_colab) and _in_colab():
+        base = "/content/drive/MyDrive"
+        if subdir is None or subdir == "":
+            return os.path.abspath(base)
+        if subdir.startswith("/"):
+            return os.path.abspath(base + subdir)
+        return os.path.abspath(os.path.join(base, subdir))
+    else:
+        base = "."
+        if subdir is None or subdir == "":
+            return os.path.abspath(base)
+        if subdir.startswith("/"):
+            return os.path.abspath(base + subdir)
+        return os.path.abspath(os.path.join(base, subdir))
+
+def _get_commit_meta_path(commit_dir=None):
+    # commit_dir이 None이면 pd_root() 사용, 아니면 pd_root(commit_dir)
+    path = os.path.join(pd_root(commit_dir), ".commit_pandas", _COMMIT_META_FILE)
+    return path
+
+def _load_commit_meta(commit_dir=None):
+    path = _get_commit_meta_path(commit_dir)
+    meta = DataCatch.load('commit_meta', cache_file=path)
+    if meta is None:
+        return []
+    return meta
+
+def _save_commit_meta(meta, commit_dir=None):
+    path = _get_commit_meta_path(commit_dir)
+    DataCatch.save('commit_meta', meta, cache_file=path)
+    #print(f"커밋 메타데이터 저장 완료: {path}")
+    #print(f"commit_meta: {meta}")
+
+def _generate_commit_hash(dt, msg):
+    base = f"{dt.strftime('%Y%m%d_%H%M%S')}_{msg}"
+    import hashlib
+    return hashlib.md5(base.encode("utf-8")).hexdigest()[:12]
+
+# DataFrame의 attrs(딕셔너리)까지 함께 저장/복원하는 pickle 래퍼 함수
+import pickle
+def df_to_pickle(df, path):
+    """
+    DataFrame과 df.attrs(딕셔너리)까지 함께 pickle로 저장
+    """
+    obj = {
+        "data": df,
+        "attrs": getattr(df, 'attrs', {})
+    }
+    with open(path, "wb") as f:
+        pickle.dump(obj, f)
+
+def df_read_pickle(path):
+    """
+    DataFrame과 attrs(딕셔너리)까지 복원
+    """
+    with open(path, "rb") as f:
+        obj = pickle.load(f)
+    df = obj["data"]
+    if "attrs" in obj:
+        #df.setattr(obj["attrs"])
+        #self.attrs = {}
+        df.attrs = obj["attrs"]
+    return df
+
+def pd_commit(df, msg, commit_dir=None):
+    """
+    DataFrame의 현재 상태를 git처럼 커밋합니다.
+    파일명: 해시키.pkl, 메타: pandas_df.json
+    commit_dir: 저장할 폴더 지정 (None이면 기본)
+    """
+    dt = datetime.datetime.now()
+    dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")  # ISO8601 포맷
+    commit_hash = _generate_commit_hash(dt, msg)
+    fname = f"{commit_hash}.pkl_helper"
+    # save_dir = pd_root(commit_dir)
+    save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
+    
+    os.makedirs(save_dir, exist_ok=True)
+    df_to_pickle(df, os.path.join(save_dir, fname))
+    #df.to_pickle(os.path.join(save_dir, fname))
+    
+    meta = _load_commit_meta(commit_dir)
+    meta.append({
+        "hash": commit_hash,
+        "datetime": dt_str,
+        "msg": msg,
+        "file": fname
+    })
+    _save_commit_meta(meta, commit_dir)
+    print(f"✅ 커밋 완료: {commit_hash} | {dt_str} | {msg}")
+
+def pd_commit_list(commit_dir=None):
+    """
+    커밋 리스트를 시간순으로 반환 (존재하는 파일만, 없으면 자동 삭제)
+    commit_dir: 저장 폴더 지정
+    반환값: pandas.DataFrame (순서, 해시, 시간, 메시지, 파일)
+    """
+    import pandas as pd
+    meta = _load_commit_meta(commit_dir)
+    #save_dir = pd_root(commit_dir)
+    save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
+    new_meta = []
+    for m in meta:
+        if os.path.exists(os.path.join(save_dir, m["file"])):
+            new_meta.append(m)
+    if len(new_meta) != len(meta):
+        _save_commit_meta(new_meta, commit_dir)
+    new_meta.sort(key=lambda x: x["datetime"])
+    # DataFrame 변환
+    df = pd.DataFrame(new_meta)
+    if not df.empty:
+        # datetime 컬럼을 pandas datetime 타입으로 변환
+        df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+        df.insert(0, 'index', range(len(df)))
+        #for i, row in df.iterrows():
+        #    print(f"[{row['index']}] {row['hash']} | {row['datetime']} | {row['msg']}")
+    else:
+        print("커밋 내역이 없습니다.")
+    return df
+
+def pd_checkout(idx_or_hash, commit_dir=None):
+    """
+    커밋 해시, 시간정보, 순서번호로 DataFrame 복원
+    commit_dir: 저장 폴더 지정
+    """
+    meta = _load_commit_meta(commit_dir)
+    save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
+    if isinstance(idx_or_hash, int):
+        if idx_or_hash < 0 or idx_or_hash >= len(meta):
+            raise IndexError("순서번호가 범위를 벗어났습니다.")
+        fname = meta[idx_or_hash]["file"]
+        return df_read_pickle(os.path.join(save_dir, fname))
+    for m in meta:
+        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"]:
+            fname = m["file"]
+            return df_read_pickle(os.path.join(save_dir, fname))
+    raise ValueError("해당 커밋을 찾을 수 없습니다.")
+
+# TODO pd_commit_rm(index, 시간정보, 해시) 함수 추가
+def pd_commit_rm(idx_or_hash, commit_dir=None):
+    """
+    커밋된 컬럼 세트를 삭제합니다.
+    columns_name: 삭제할 컬럼 세트 이름 (문자열 또는 리스트)
+    commit_dir: 저장 폴더 지정
+    """
+    meta = _load_commit_meta(commit_dir)
+    save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
+    if isinstance(idx_or_hash, int):
+        if idx_or_hash < 0 or idx_or_hash >= len(meta):
+            raise IndexError("순서번호가 범위를 벗어났습니다.")
+        fname = meta[idx_or_hash]["file"]
+        os.remove(os.path.join(save_dir, fname))
+        meta.pop(idx_or_hash)  # 메타에서 삭제
+        _save_commit_meta(meta, commit_dir)
+        return
+    for m in meta:
+        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"]:
+            fname = m["file"]
+            os.remove(os.path.join(save_dir, fname))
+            meta.remove(m)  # 메타에서 삭제
+            _save_commit_meta(meta, commit_dir)
+            return
+    raise ValueError("해당 커밋을 찾을 수 없습니다.")
+
+###########################################################################################################
+
 # 모듈 import 시 자동으로 setup 실행
 if __name__ != "__main__":
-    setup()    
+    setup()
+    set_pd_root_base()

@@ -2,3 +2,5 @@
 /__pycache__
 /cache.json
 /cache.json.bak
+/.commit_pandas
+/testdir
