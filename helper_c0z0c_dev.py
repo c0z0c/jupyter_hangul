@@ -2295,6 +2295,8 @@ def pd_commit_update(msg, df=None, commit_dir=None):
     if pd_commit_has(msg, commit_dir):
         return pd_checkout(msg, commit_dir)
     # 새로운 커밋 생성
+    if df is None or not isinstance(df, pd.DataFrame):
+        return pd.DataFrame()  # 빈 DataFrame 반환
     return pd_commit(df, msg, commit_dir)
 
 
