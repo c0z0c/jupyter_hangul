@@ -2351,7 +2351,7 @@ def pd_checkout(idx_or_hash, commit_dir=None):
         fname = meta[idx_or_hash]["file"]
         return df_read_pickle(os.path.join(save_dir, fname))
     for m in meta:
-        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"]:
+        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"] or idx_or_hash == m["msg"]:
             fname = m["file"]
             return df_read_pickle(os.path.join(save_dir, fname))
     raise ValueError("해당 커밋을 찾을 수 없습니다.")
@@ -2374,7 +2374,7 @@ def pd_commit_rm(idx_or_hash, commit_dir=None):
         _save_commit_meta(meta, commit_dir)
         return
     for m in meta:
-        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"]:
+        if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"] or idx_or_hash == m["msg"]:
             fname = m["file"]
             os.remove(os.path.join(save_dir, fname))
             meta.remove(m)  # 메타에서 삭제
