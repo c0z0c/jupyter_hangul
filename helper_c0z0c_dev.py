@@ -860,8 +860,9 @@ def get_head_att(self, key=None):
     
     # key 존재 여부 확인
     if key not in self.attrs["column_descriptions"]:
-        available_keys = list(self.attrs["column_descriptions"].keys())
-        raise KeyError(f"컬럼 '{key}'에 대한 설명이 없습니다. 사용 가능한 컬럼: {available_keys}")
+        return key  # 컬럼 설명이 없으면 key 자체 반환 (None 대신)
+        #available_keys = list(self.attrs["column_descriptions"].keys())
+        #raise KeyError(f"컬럼 '{key}'에 대한 설명이 없습니다. 사용 가능한 컬럼: {available_keys}")
     
     return self.attrs["column_descriptions"][key]
 
