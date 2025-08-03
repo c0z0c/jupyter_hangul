@@ -431,7 +431,6 @@ def set_pandas_extension():
 
     # pandas commit 시스템 API 바인딩
     setattr(pd.DataFrame, "commit", _df_commit)
-    setattr(pd.DataFrame, "commit_update", _df_commit_update)
     setattr(pd.DataFrame, "checkout", classmethod(_df_checkout))
     setattr(pd.DataFrame, "commit_list", classmethod(_df_commit_list))
     setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
@@ -478,13 +477,7 @@ def _df_commit(self, msg, commit_dir=None):
     """
     return pd_commit(self, msg, commit_dir)
 
-def _df_commit_update(self, msg, commit_dir=None):
-    """
-    DataFrame의 현재 상태를 커밋 또는 업데이트합니다.
-    사용법:
-        df.commit_update("커밋 메시지")
-    """
-    return pd_commit_update(msg, self, commit_dir)
+
 
 @classmethod
 def _df_checkout(cls, idx_or_hash, commit_dir=None):
@@ -2148,75 +2141,6 @@ class DataCatch:
         except Exception as e:
             print(f"오류: 최적화 실패: {e}")
             return False
-    
-    @classmethod
-    def exists(cls, key, cache_file=None):
-        """키가 캐시에 존재하는지 확인"""
-        cls._initialize_cache(cache_file)
-        return key in cls._cache
-    
-    @classmethod
-    def delete(cls, key, cache_file=None):
-        """특정 키 삭제"""
-        cls._initialize_cache(cache_file)
-        if key in cls._cache:
-            del cls._cache[key]
-            cls._save_cache()
-            return True
-        return False
-    
-    @classmethod
-    def delete_keys(cls, *keys, cache_file=None):
-        """여러 키를 한번에 삭제"""
-        cls._initialize_cache(cache_file)
-        deleted_count = 0
-        for key in keys:
-            if key in cls._cache:
-                del cls._cache[key]
-                deleted_count += 1
-        if deleted_count > 0:
-            cls._save_cache()
-        return deleted_count
-    
-    @classmethod
-    def list_keys(cls, cache_file=None):
-        """모든 키 목록 반환"""
-        cls._initialize_cache(cache_file)
-        return list(cls._cache.keys())
-    
-    @classmethod
-    def compress_cache(cls, cache_file=None):
-        """캐시 파일 압축"""
-        cls._initialize_cache(cache_file)
-        
-        if not os.path.exists(cls._cache_file):
-            print("압축할 캐시 파일이 없습니다.")
-            return False
-        
-        try:
-            compressed_file = cls._cache_file + ".gz"
-            
-            with open(cls._cache_file, 'rb') as f_in:
-                with gzip.open(compressed_file, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
-            
-            original_size = os.path.getsize(cls._cache_file)
-            compressed_size = os.path.getsize(compressed_file)
-            savings = ((original_size - compressed_size) / original_size) * 100
-            
-            print(f"압축 완료: {original_size / 1024 / 1024:.2f}MB → {compressed_size / 1024 / 1024:.2f}MB ({savings:.1f}% 절약)")
-            return True
-            
-        except Exception as e:
-            print(f"압축 실패: {e}")
-            return False
-    
-    @classmethod
-    def cleanup_cache(cls, days=30, cache_file=None):
-        """오래된 캐시 정리"""
-        cls._initialize_cache(cache_file)
-        print("현재는 수동 정리만 지원합니다. cache_clear()를 사용하세요.")
-        return True
 
 
 def _generate_commit_hash(dt, msg):
@@ -2263,6 +2187,10 @@ def pd_commit(df, msg, commit_dir=None):
     os.makedirs(save_dir, exist_ok=True)
 
     meta = _load_commit_meta(commit_dir)
+    # print(f"커밋 준비: {commit_hash} | {dt_str} | {msg}")
+    # print(f"meta: {meta}")
+    # 메타데이터 파일 경로
+    
     # 동일한 메시지(msg)가 있으면 기존 파일 삭제 및 메타에서 제거
     old_idx = None
     for i, m in enumerate(meta):
@@ -2288,17 +2216,7 @@ def pd_commit(df, msg, commit_dir=None):
     return df
 
 import pandas as pd
-def pd_commit_update(msg, df=None, commit_dir=None):
-    """
-    DataFrame을 커밋하거나, 동일 메시지가 있으면 해당 커밋을checkout합니다.
-    """
-    # 기존 메시지 커밋이 있으면 복원
-    if pd_commit_has(msg, commit_dir):
-        return pd_checkout(msg, commit_dir)
-    # 새로운 커밋 생성
-    if df is None or not isinstance(df, pd.DataFrame):
-        return pd.DataFrame()  # 빈 DataFrame 반환
-    return pd_commit(df, msg, commit_dir)
+
 
 
 def pd_commit_list(commit_dir=None):
@@ -2310,11 +2228,21 @@ def pd_commit_list(commit_dir=None):
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
     new_meta = []
+    removed_count = 0
+    
     for m in meta:
-        if os.path.exists(os.path.join(save_dir, m["file"])):
+        file_path = os.path.join(save_dir, m["file"])
+        if os.path.exists(file_path):
             new_meta.append(m)
-    if len(new_meta) != len(meta):
+        else:
+            print(f"경고: 누락된 파일 '{m['file']}' (메시지: {m['msg']}) 메타데이터에서 제거")
+            removed_count += 1
+    
+    # 메타데이터 정리가 필요한 경우
+    if removed_count > 0:
         _save_commit_meta(new_meta, commit_dir)
+        print(f"✅ {removed_count}개의 누락된 커밋 항목을 정리했습니다.")
+    
     new_meta.sort(key=lambda x: x["datetime"])
     # DataFrame 변환
     df = pd.DataFrame(new_meta)
@@ -2328,50 +2256,102 @@ def pd_commit_list(commit_dir=None):
 
 def pd_checkout(idx_or_hash, commit_dir=None):
     """
-    커밋 해시, 시간정보, 순서번호로 DataFrame 복원
+    커밋 해시, 시간정보, 메시지, 순서번호로 DataFrame 복원
+    파일이 없는 경우 메타데이터에서 자동으로 정리하고 빈 DataFrame 반환
     commit_dir: 저장 폴더 지정
     """
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
+    
+    # 메타데이터 정리 플래그
+    meta_updated = False
+    
     if isinstance(idx_or_hash, int):
         if idx_or_hash < 0 or idx_or_hash >= len(meta):
-            raise IndexError("순서번호가 범위를 벗어났습니다.")
+            print(f"오류: 순서번호 {idx_or_hash}가 범위를 벗어났습니다. (0-{len(meta)-1})")
+            return pd.DataFrame()
+        
         fname = meta[idx_or_hash]["file"]
-        return df_read_pickle(os.path.join(save_dir, fname))
-    for m in meta:
+        file_path = os.path.join(save_dir, fname)
+        
+        # 파일 존재 여부 확인
+        if not os.path.exists(file_path):
+            print(f"경고: 파일 '{fname}'이 존재하지 않습니다. 메타데이터에서 제거합니다.")
+            meta.pop(idx_or_hash)
+            _save_commit_meta(meta, commit_dir)
+            return pd.DataFrame()
+        
+        try:
+            return df_read_pickle(file_path)
+        except Exception as e:
+            print(f"오류: 파일 읽기 실패: {e}")
+            # 손상된 파일 정보를 메타에서 제거
+            meta.pop(idx_or_hash)
+            _save_commit_meta(meta, commit_dir)
+            return pd.DataFrame()
+    
+    # 해시, 날짜, 메시지로 검색
+    for i, m in enumerate(meta):
         if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"] or idx_or_hash == m["msg"]:
             fname = m["file"]
-            return df_read_pickle(os.path.join(save_dir, fname))
-    raise ValueError("해당 커밋을 찾을 수 없습니다.")
+            file_path = os.path.join(save_dir, fname)
+            
+            # 파일 존재 여부 확인
+            if not os.path.exists(file_path):
+                print(f"경고: 파일 '{fname}'이 존재하지 않습니다. 메타데이터에서 제거합니다.")
+                meta.pop(i)
+                _save_commit_meta(meta, commit_dir)
+                return pd.DataFrame()
+            
+            try:
+                return df_read_pickle(file_path)
+            except Exception as e:
+                print(f"오류: 파일 읽기 실패: {e}")
+                # 손상된 파일 정보를 메타에서 제거
+                meta.pop(i)
+                _save_commit_meta(meta, commit_dir)
+                return pd.DataFrame()
+    
+    print(f"오류: 커밋 '{idx_or_hash}'을(를) 찾을 수 없습니다.")
+    return pd.DataFrame()  # 빈 DataFrame 반환
 
 
 def pd_commit_rm(idx_or_hash, commit_dir=None):
     """
-    커밋된 컬럼 세트를 삭제합니다.
-    columns_name: 삭제할 컬럼 세트 이름 (문자열 또는 리스트)
+    커밋을 삭제합니다.
+    idx_or_hash: 삭제할 커밋의 인덱스, 해시, 날짜, 또는 메시지
     commit_dir: 저장 폴더 지정
     """
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
     if isinstance(idx_or_hash, int):
         if idx_or_hash < 0 or idx_or_hash >= len(meta):
-            # raise IndexError("순서번호가 범위를 벗어났습니다.")
-            print(f"{idx_or_hash} 순서번호가 범위를 벗어났습니다.")
-            return
+            print(f"오류: 순서번호 {idx_or_hash}가 범위를 벗어났습니다. (0-{len(meta)-1})")
+            return False
         fname = meta[idx_or_hash]["file"]
-        os.remove(os.path.join(save_dir, fname))
-        meta.pop(idx_or_hash)  # 메타에서 삭제
-        _save_commit_meta(meta, commit_dir)
-        return
-    for m in meta:
+        try:
+            os.remove(os.path.join(save_dir, fname))
+            meta.pop(idx_or_hash)  # 메타에서 삭제
+            _save_commit_meta(meta, commit_dir)
+            print(f"✅ 커밋 {idx_or_hash} 삭제 완료")
+            return True
+        except OSError as e:
+            print(f"오류: 파일 삭제 실패: {e}")
+            return False
+    for i, m in enumerate(meta):
         if idx_or_hash == m["hash"] or idx_or_hash == m["datetime"] or idx_or_hash == m["msg"]:
             fname = m["file"]
-            os.remove(os.path.join(save_dir, fname))
-            meta.remove(m)  # 메타에서 삭제
-            _save_commit_meta(meta, commit_dir)
-            return
-    #raise ValueError("해당 커밋을 찾을 수 없습니다.")
-    print(f"{idx_or_hash} 해당 커밋을 찾을 수 없습니다.")
+            try:
+                os.remove(os.path.join(save_dir, fname))
+                meta.pop(i)  # 메타에서 삭제
+                _save_commit_meta(meta, commit_dir)
+                print(f"✅ 커밋 '{idx_or_hash}' 삭제 완료")
+                return True
+            except OSError as e:
+                print(f"오류: 파일 삭제 실패: {e}")
+                return False
+    print(f"오류: 커밋 '{idx_or_hash}'을(를) 찾을 수 없습니다.")
+    return False
 
 def pd_commit_has(idx_or_hash, commit_dir=None):
     """
