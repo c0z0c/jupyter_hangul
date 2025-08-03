@@ -185,6 +185,30 @@ helper.cache_clear()   # 캐시 전체 삭제
 helper.cache_info()    # 캐시 저장 위치 정보
 ```
 
+### DataFrame 커밋 기능 (NEW!)
+```python
+# DataFrame을 git처럼 버전 관리
+df.commit("데이터 전처리 완료")
+df.commit("결측치 제거 후")
+df.commit("피처 엔지니어링 적용")
+
+# 커밋 히스토리 조회
+df.commit_list()
+
+# 커밋 관리
+df.commit_rm(0)               # 인덱스로 삭제
+df.commit_has("hash123")      # 커밋 존재 확인
+
+# 심플 소스
+df = helper.pd_checkout('원본')
+if df.empty:
+    df= helper.pd_read_csv('test.csv')
+    helper.pd_commit(df, '원본')
+    print('원본 reading from source')
+else:
+    print('원본 reading from cache')
+```
+
 ## 📚 API 참조
 
 ### 주요 함수
@@ -208,6 +232,18 @@ helper.cache_info()    # 캐시 저장 위치 정보
 - `cache_key(*args, **kwargs)`: 캐시 키 생성
 - `cache_save(key, data)`: 데이터 캐시에 저장
 - `cache_load(key)`: 캐시에서 데이터 로드
+- `cache_exists(key)`: 캐시 존재 확인
+- `cache_delete(key)`: 캐시 삭제
+- `cache_list()`: 캐시 목록 조회
+- `cache_clear()`: 전체 캐시 삭제
+- `cache_info()`: 캐시 정보 조회
+
+### DataFrame 커밋 함수
+
+- `pd_commit(df, msg)`: DataFrame 커밋
+- `pd_commit_list()`: 커밋 목록 조회
+- `pd_commit_rm(idx_or_hash)`: 커밋 삭제
+- `pd_commit_has(idx_or_hash)`: 커밋 존재 확인
 - `cache_exists(key)`: 캐시 키 존재 여부
 - `cache_delete(key)`: 특정 캐시 삭제
 - `cache_list()`: 캐시 키 목록
@@ -300,6 +336,15 @@ helper.setup()  # 문제 해결
 
 ## 업데이트 내역
 
+### v2.3.0 (2025.08.03)
+- 📝 **DataFrame 커밋 시스템**: git처럼 DataFrame 버전 관리 (`df.commit()`, `df.commit_list()`)
+- 🌍 **크로스 플랫폼 지원**: Windows, Ubuntu, Mac 모든 환경에서 완벽 호환
+- 🔧 **UTF-8 자동 설정**: Windows 환경에서 한글 인코딩 문제 자동 해결
+- 🧪 **100% 테스트 통과**: 37개 유닛 테스트로 안정성 보장
+- 💾 **캐시 시스템 강화**: DataCatch 시스템으로 더욱 안정적인 캐시 관리
+- 📊 **pandas 확장 개선**: 컬럼 설명 기능 및 출력 형식 다양화
+- 🚀 **성능 최적화**: 환경 감지 및 설정 로직 개선
+
 ### v2.2.0 (2025.07.25)
 - 🚀 **안정적 한글 폰트 시스템**: 재부팅 없이 폰트 로딩
 - 📝 **간소화된 출력**: 15줄 → 3줄로 메시지 간소화
@@ -319,3 +364,26 @@ helper.setup()  # 문제 해결
 - 한글 폰트 자동 설정
 - pandas 확장 기능 추가
 - Jupyter/Colab 환경 지원
+
+### 개발자 리뷰
+**주요 기능별 설계 의도:**
+
+- **head_att**: pandas DataFrame에 한글 보조 컬럼 설명 기능 추가
+  - 데이터 분석 시 컬럼의 의미를 한글로 명확히 표시
+  - 코드 가독성과 문서화 효과 향상
+
+- **cache**: 머신러닝/딥러닝 결과를 저장하여 동일한 모델링 반복 방지
+  - 시간이 오래 걸리는 학습 결과를 캐시로 보존
+  - 실험 효율성 극대화 및 컴퓨팅 리소스 절약
+
+- **commit**: pandas DataFrame 조작 시 중간 데이터 또는 다양한 버전의 데이터 저장
+  - git과 유사한 방식으로 데이터 처리 과정을 단계별 관리
+  - 데이터 전처리 과정의 추적성과 복원 가능성 제공
+
+- **dir_start**: 인스턴스 메서드 조회 기능
+  - 객체의 속성/메서드를 접두사로 빠르게 검색
+  - 개발 및 api 유용한 탐색 도구
+
+**개발 철학:**
+Jupyter 환경에서 한국어 사용자의 데이터 분석 워크플로우를 최적화하고, 
+반복 작업을 줄여 분석에 집중할 수 있도록 돕는 것이 목표입니다.

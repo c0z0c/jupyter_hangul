@@ -150,6 +150,21 @@ helper.cache_list()    # 저장된 항목 목록
 helper.cache_clear()   # 전체 캐시 삭제
 ```
 
+### DataFrame 커밋 기능 (v2.3.0 신기능)
+```python
+# DataFrame을 git처럼 버전 관리
+df.commit("원본 데이터 로드")
+df.commit("결측치 제거 완료")
+df.commit("피처 엔지니어링 적용")
+
+# 커밋 히스토리 조회
+df.commit_list()
+
+# 특정 커밋 관리
+df.commit_rm(0)               # 첫 번째 커밋 삭제
+df.commit_has("abc123")       # 해시로 커밋 존재 확인
+```
+
 ### 파일 읽기 함수
 ```python
 # 기본 사용법 (Colab/로컬 자동 감지)

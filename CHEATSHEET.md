@@ -91,6 +91,28 @@ helper.cache_clear()          # 전체 삭제
 helper.cache_info()           # 저장 위치 정보
 ```
 
+### 📝 DataFrame 커밋 기능 (신규)
+```python
+# DataFrame을 git처럼 커밋
+df.commit("데이터 전처리 완료")
+df.commit("결측치 제거 후")
+df.commit("피처 엔지니어링 적용")
+
+# 커밋 목록 조회
+df.commit_list()              # 커밋 히스토리 조회
+
+# 커밋 관리
+df.commit_rm(0)               # 인덱스로 삭제
+df.commit_rm("hash123")       # 해시로 삭제
+df.commit_has("hash123")      # 커밋 존재 확인
+
+# 또는 직접 함수 사용
+helper.pd_commit(df, "메시지")
+helper.pd_commit_list()
+helper.pd_commit_rm(0)
+helper.pd_commit_has("hash123")
+```
+
 ## 🛠️ 개별 함수 사용법
 
 ```python
@@ -110,6 +132,12 @@ helper.cache_clear()         # 전체 삭제
 helper.cache_info()          # 캐시 정보
 helper.cache_size()          # 캐시 크기
 helper.cache_get_path()      # 캐시 경로
+
+# DataFrame 커밋 함수들
+helper.pd_commit(df, msg)    # DataFrame 커밋
+helper.pd_commit_list()      # 커밋 목록 조회
+helper.pd_commit_rm(idx)     # 커밋 삭제
+helper.pd_commit_has(hash)   # 커밋 존재 확인
 ```
 
 ## 🎨 컬럼 설명 관리
