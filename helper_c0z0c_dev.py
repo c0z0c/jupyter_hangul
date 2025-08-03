@@ -445,6 +445,12 @@ def setup():
     print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
     
     try:
+        
+        if not _in_colab():
+            import os
+            os.system('chcp 65001')
+            os.environ['PYTHONIOENCODING'] = 'utf-8'
+
         # 폰트 다운로드/설치 및 로딩 (출력 최소화)
         font_download_success = font_download()
         if font_download_success:
