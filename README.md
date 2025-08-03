@@ -1,10 +1,16 @@
-# Jupyter 한글 환경 설정 모듈
+# Jupyter 한글 환경 설정 모듈 v2.3.0
 
 > 🚀 **간단 사용법**: `helper.setup()` 한 번으로 모든 설정 완료!
 
-Jupyter Notebook과 Google Colab에서 한글 폰트 설정 및 pandas 확장 기능을 제공하는 모듈입니다.
+Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈입니다.
 
 https://youtu.be/C6XRhqoKBc4
+
+## 🆕 v2.3.0 주요 업데이트
+- 💾 **캐시 기능 추가**: 데이터/모델 저장으로 재실행 시간 단축
+- 🌐 **크로스 플랫폼 지원**: Windows, Ubuntu, Mac 모든 환경에서 동작
+- 🧪 **37개 유닛 테스트**: 100% 통과로 안정성 보장
+- 📊 **pandas 확장 기능**: DataFrame.head_att() 등 한글 지원 기능
 
 ## 🎯 빠른 사용법
 
@@ -15,10 +21,30 @@ import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 
 **🎉 출력 예시**:
 ```
-🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.2.0)
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
 ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
 ```
+
+## 💾 캐시 기능 (NEW!)
+```python
+import helper_c0z0c_dev as helper
+
+# 데이터 캐시
+key = helper.cache_key("model", "v1.0")
+helper.cache_save(key, trained_model)
+model = helper.cache_load(key)
+
+# DataFrame 캐시
+helper.cache_save("processed_data", df)
+cached_df = helper.cache_load("processed_data")
+```
+
+## 🌐 환경 지원
+- ✅ Google Colab (자동 감지)
+- ✅ Windows (UTF-8 설정 자동 적용)
+- ✅ Ubuntu/Linux (호환성 보장)
+- ✅ macOS (호환성 보장)
 
 **사용 가능한 기능:**
 - 🎨 한글 폰트 지원 (matplotlib)

@@ -1,24 +1,42 @@
-# 🚀 Jupyter 한글 환경 설정 치트시트
+# 🚀 Jupyter 한글 환경 설정 치트시트 v2.3.0
 
 ## 📥 설치
 
 ```python
-from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
 import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 ```
 
 **🎉 출력 예시**:
 ```
-🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.2.0)
-✅ 한글 폰트가 이미 설정되어 있습니다.
-🎉 설정 완료! 한글폰트 및 pandas 확장 기능 사용 가능
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
+✅ 한글 폰트 및 pandas 확장 기능 설정 완료
+🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
 ```
 
 ## 🎯 주요 특징
 
 - **즉시 사용**: 설정 후 바로 한글 폰트 사용 가능
-- **간소화된 출력**: 깔끔한 3줄 메시지
+- **간소화된 출력**: 깔끔한 메시지
 - **스마트 설치**: 기존 폰트 있으면 재설치 안함
+- **💾 캐시 기능**: 데이터/모델 저장으로 재실행 시간 단축
+
+## 💾 캐시 기능 (신규)
+```python
+# 캐시 키 생성
+key = helper.cache_key("experiment_1", param1="value1")
+
+# 데이터 저장/로드
+helper.cache_save(key, data)
+loaded_data = helper.cache_load(key)
+
+# 캐시 관리
+helper.cache_exists(key)     # 존재 확인
+helper.cache_delete(key)     # 삭제
+helper.cache_clear()         # 전체 삭제
+helper.cache_list_keys()     # 키 목록
+helper.cache_size()          # 캐시 크기
+```
 
 ### 한글 폰트 설정
 ```python
@@ -26,15 +44,26 @@ import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 plt.title("한글 제목")  # 바로 사용 가능
 ```
 
-### pandas 확장 기능
+### 📊 pandas 확장 기능
 ```python
 # 컬럼 설명 설정
-df.set_head_att({"id": "아이디", "name": "이름"})
+df.set_head_att({"id": "아이디", "name": "이름", "age": "나이"})
 
 # 한글 설명 포함 출력 (다양한 형식 지원)
 df.head_att()              # 기본 print 형식
 df.head_att(out='html')    # HTML 형식 (예쁘게 표시)
 df.head_att(out='str')     # 문자열 반환
+
+# 컬럼 세트 관리
+df.set_head_ext('kr', {'name': '이름', 'age': '나이'})
+df.set_head_column('kr')   # 한글 컬럼명으로 변경
+df.set_head_column('org')  # 원본 컬럼명으로 복원
+
+# 설명 조회 및 삭제
+df.get_head_att()          # 전체 설명 조회
+df.get_head_att('name')    # 개별 설명 조회
+df.remove_head_att('name') # 설명 삭제
+df.clear_head_att()        # 모든 설명 삭제
 ```
 
 ### 편의 함수
