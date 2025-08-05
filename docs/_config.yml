@@ -1,0 +1,55 @@
+# Jekyll 설정
+title: "Jupyter 한글 환경 설정 모듈"
+description: "Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈"
+url: "https://c0z0c.github.io"
+baseurl: "/jupyter_hangul"
+
+# Build 설정
+markdown: kramdown
+highlighter: rouge
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+
+# 파일 처리
+include:
+  - "_*_.html"
+  - "_*_.md"
+
+# 제외할 파일들
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+
+# 기본 레이아웃 설정
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "default"
+      cache-control: "no-cache"
+      expires: 0
+      pragma: "no-cache"
+  - scope:
+      path: "md"
+      type: "pages"
+    values:
+      layout: "default"
+      cache-control: "no-cache"
+      expires: 0
+      pragma: "no-cache"
+  - scope:
+      path: "reports"
+      type: "pages"
+    values:
+      layout: "default"
+      cache-control: "no-cache"
+      expires: 0
+      pragma: "no-cache"
+      
+# 한국어 설정
+lang: ko
+timezone: Asia/Seoul

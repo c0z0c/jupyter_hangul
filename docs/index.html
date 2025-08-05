@@ -1,0 +1,272 @@
+---
+layout: default
+---
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jupyter 한글 환경 설정 모듈 v2.3.0</title>
+    
+    <!-- 캐시 방지 설정 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="cache-control" content="no-cache">
+    <meta name="expires" content="0">
+    <meta name="pragma" content="no-cache">
+    
+    <!-- 동적 캐시 버스팅 -->
+    <meta name="cache-buster" content="20250805">
+    <meta name="last-modified" content="2025-08-05">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+        .emoji {
+            font-size: 1.2em;
+        }
+        .highlight {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            margin: 20px 0;
+        }
+        .code-block {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            border: 1px solid #ddd;
+        }
+        .nav-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .nav-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .nav-card:hover {
+            transform: translateY(-5px);
+            text-decoration: none;
+            color: white;
+        }
+        .nav-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2em;
+        }
+        .nav-card p {
+            margin: 0;
+            opacity: 0.9;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .feature {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e1e8ed;
+            text-align: center;
+        }
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .update-badge {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .reports-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .report-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .report-item {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .report-date {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3><a href="https://github.com/c0z0c{{ site.baseurl }}">
+                <p>https://github.com/c0z0c{{ site.baseurl }}</p>
+            </a>
+        </h3>
+
+        <h1><span class="emoji">🚀</span> Jupyter 한글 환경 설정 모듈 v2.3.0</h1>
+        
+        <div class="highlight">
+            <strong><span class="emoji">🎯</span> 빠른 사용법:</strong> <code>helper.setup()</code> 한 번으로 모든 설정 완료!
+        </div>
+        
+        <p>Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈입니다.</p>
+        
+        <div class="nav-links">
+            <a href="{{ site.baseurl }}/md/README" class="nav-card">
+                <h3><span class="emoji">📖</span> 전체 문서</h3>
+                <p>상세한 사용법과 API 문서</p>
+            </a>
+            <a href="{{ site.baseurl }}/md/CHEATSHEET" class="nav-card">
+                <h3><span class="emoji">📋</span> 치트시트</h3>
+                <p>빠른 참조 가이드</p>
+            </a>
+            <a href="{{ site.baseurl }}/md/COLAB_USAGE" class="nav-card">
+                <h3><span class="emoji">🌐</span> Colab 가이드</h3>
+                <p>Google Colab 전용 사용법</p>
+            </a>
+            <a href="{{ site.baseurl }}/reports/" class="nav-card">
+                <h3><span class="emoji">🧪</span> 테스트 리포트</h3>
+                <p>모듈 안정성 검증 결과</p>
+            </a>
+        </div>
+
+        <h2><span class="emoji">🆕</span> v2.3.0 주요 업데이트 <span class="update-badge">NEW</span></h2>
+        
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">💾</div>
+                <h3>캐시 기능</h3>
+                <p>데이터/모델 저장으로 재실행 시간 단축</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🌐</div>
+                <h3>크로스 플랫폼</h3>
+                <p>Windows, Ubuntu, Mac 모든 환경 지원</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🧪</div>
+                <h3>37개 유닛 테스트</h3>
+                <p>100% 통과로 안정성 보장</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📊</div>
+                <h3>pandas 확장</h3>
+                <p>DataFrame.head_att() 등 한글 지원</p>
+            </div>
+        </div>
+
+        <h2><span class="emoji">⚡</span> 빠른 시작</h2>
+        
+        <div class="code-block">
+# 모듈 다운로드 및 import (한 번에 모든 설정 완료)
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+import helper_c0z0c_dev as helper
+
+# 출력 예시:
+# 🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
+# ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
+# 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
+        </div>
+
+        <h2><span class="emoji">💡</span> 주요 기능</h2>
+        
+        <ul>
+            <li><strong>🎨 한글 폰트 자동 설정:</strong> NanumGothic 폰트를 자동으로 다운로드하고 matplotlib에 적용</li>
+            <li><strong>📊 pandas 확장 기능:</strong> DataFrame/Series에 한글 컬럼 설명 기능 추가</li>
+            <li><strong>💾 캐시 기능:</strong> ML 모델 및 데이터 캐싱 시스템</li>
+            <li><strong>📝 DataFrame 커밋:</strong> git처럼 DataFrame 버전 관리</li>
+            <li><strong>🔧 편의 함수들:</strong> 파일 읽기, 라이브러리 도움말 검색 등</li>
+        </ul>
+
+        <h2 id="reports"><span class="emoji">🧪</span> 테스트 리포트</h2>
+        
+        <div class="reports-section">
+            <p>모듈의 안정성과 신뢰성을 보장하기 위한 지속적인 테스트 결과입니다.</p>
+            
+            <div class="report-list">
+                <div class="report-item">
+                    <h4><a href="{{ site.baseurl }}/reports/">최신 테스트 리포트</a></h4>
+                    <p class="report-date">자동 업데이트</p>
+                    <p><strong>37개 테스트 모두 통과</strong> - v2.3.0 안정성 검증</p>
+                </div>
+                <div class="report-item">
+                    <h4><a href="{{ site.baseurl }}/reports/">전체 테스트 히스토리</a></h4>
+                    <p class="report-date">2025년 7월 ~ 8월</p>
+                    <p>모든 버전별 테스트 결과 및 개선 과정</p>
+                </div>
+            </div>
+        </div>
+
+        <h2><span class="emoji">🌍</span> 환경 지원</h2>
+        
+        <ul>
+            <li>✅ Google Colab (자동 감지)</li>
+            <li>✅ Windows (UTF-8 설정 자동 적용)</li>
+            <li>✅ Ubuntu/Linux (호환성 보장)</li>
+            <li>✅ macOS (호환성 보장)</li>
+        </ul>
+
+        <h2><span class="emoji">📚</span> 리소스</h2>
+        
+        <ul>
+            <li><a href="https://youtu.be/C6XRhqoKBc4">YouTube 튜토리얼</a></li>
+            <li><a href="https://github.com/c0z0c/jupyter_hangul">GitHub 저장소</a></li>
+            <li><a href="{{ site.baseurl }}/md/README">상세 문서</a></li>
+            <li><a href="{{ site.baseurl }}/md/CHEATSHEET">빠른 참조</a></li>
+        </ul>
+
+        <footer>
+            <p>© 2025 Helper Module v2.3.0 | 감사 인사: 조하나 강사님</p>
+            <p>Last updated: 2025년 8월 5일</p>
+        </footer>
+    </div>
+</body>
+</html>
