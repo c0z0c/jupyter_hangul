@@ -12,7 +12,8 @@ pragma: no-cache
 
 Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈입니다.
 
-https://youtu.be/C6XRhqoKBc4
+
+[📺 YouTube 튜토리얼](https://youtu.be/C6XRhqoKBc4)
 
 ## 🆕 v2.3.0 주요 업데이트
 - 💾 **캐시 기능 추가**: 데이터/모델 저장으로 재실행 시간 단축
