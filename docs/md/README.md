@@ -8,7 +8,7 @@ pragma: no-cache
 
 # Jupyter 한글 환경 설정 모듈 v2.3.0
 
-> 🚀 **간단 사용법**: `helper.setup()` 한 번으로 모든 설정 완료!
+> 🏠 **[c0z0c 메인 페이지](https://c0z0c.github.io/)** | 🚀 **간단 사용법**: `helper.setup()` 한 번으로 모든 설정 완료!
 
 Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈입니다.
 

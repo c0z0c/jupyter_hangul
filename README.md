@@ -1,6 +1,6 @@
 # 🚀 Jupyter 한글 환경 설정 모듈 v2.3.0
 
-> **📖 완전한 문서와 사용법은 [GitHub Pages](https://c0z0c.github.io/jupyter_hangul/)에서 확인하세요!**
+> **🏠 [c0z0c 메인 페이지](https://c0z0c.github.io/) | 📖 완전한 문서와 사용법은 [GitHub Pages](https://c0z0c.github.io/jupyter_hangul/)에서 확인하세요!**
 
 ## ⚡ 한 줄 설치
 
