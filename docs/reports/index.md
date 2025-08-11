@@ -92,10 +92,10 @@ pragma: no-cache
     
     <div class="reports-grid">
         {% assign all_files = site.static_files | where: "extname", ".md" %}
-        {% assign reports = all_files | where_exp: "item", "item.path contains '/reports/test_report_'" | sort: "name" | reverse %}
+        {% assign reports = all_files | where_exp: "item", "item.path contains '/reports/test_report_'" | sort: "name" %}
         {% if reports.size == 0 %}
             {% comment %} Fallback: GitHub Pages 빌드 시 static_files를 못 찾는 경우 {% endcomment %}
-            {% assign reports = site.pages | where_exp: "page", "page.path contains 'reports/test_report_'" | sort: "path" | reverse %}
+            {% assign reports = site.pages | where_exp: "page", "page.path contains 'reports/test_report_'" | sort: "path" %}
         {% endif %}
         
         {% if reports.size > 0 %}
