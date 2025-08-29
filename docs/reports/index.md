@@ -169,7 +169,7 @@ pragma: no-cache
 
       const dateInfo = parseReportDate(file.name);
       const description = getReportDescription(index, curFiles.length);
-      const reportUrl = file.url || file.path.replace('.md', '');
+      const reportUrl = site_url + file.path.replace('.md', '');
       const isLatest = index === 0;
       const reportIcon = isLatest ? '🆕' : (index <= 2 ? '🔧' : '🚀');
       const reportTitle = isLatest ? '최신 테스트 리포트' : '테스트 리포트 #' + (curFiles.length - index);
