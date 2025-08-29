@@ -1,0 +1,130 @@
+
+{%- assign all_files = site.static_files -%}
+{%- assign all_pages = site.pages -%}
+
+{%- assign cur_file_dir = cur_dir -%}
+{%- assign cur_page_dir = page.dir -%}
+
+{%- if cur_file_dir == nil or cur_file_dir == "" -%}
+  {%- assign cur_dirs = "" -%}
+  {%- assign cur_files = "" -%}
+{%- else -%}
+
+  {%- assign cur_deep = cur_file_dir | split: "/" -%}
+  {%- assign cur_deep_size = cur_deep | size -%}
+
+<!--
+  console.log('cur_file_dir:', {{- cur_file_dir -}});
+  console.log('cur_page_dir:', {{- cur_page_dir -}});
+  console.log('cur_deep_size:', {{- cur_deep_size -}});
+-->
+
+  <!-- fiels -->
+  console.group('files');
+  {%- for f in all_files -%}
+    {%- assign f_deep = f.path | split: "/" -%}
+    {%- assign f_deep_size = f_deep | size | minus: 1 -%}
+    console.log('f.path:', ' ({{ cur_deep_size }},{{ f_deep_size }}) {{- f.path -}}');
+  {%- endfor -%}
+  console.groupEnd();
+
+  console.group('cur files');
+  {%- assign cur_files = "" | split: "" -%}
+  {%- for f in all_files -%}
+    {%- assign f_deep = f.path | split: "/" -%}
+    {%- assign f_deep_size = f_deep | size | minus: 1 -%}
+
+    {%- assign cur_file_dir_len = cur_file_dir | size -%}
+    {%- assign f_path_start = f.path | slice: 0, cur_file_dir_len -%}
+
+    {%- assign f_s_path = f.path | slice: 0, 1 -%}
+    {%- assign f_e_path = f.path | slice: -1, 1 -%}
+
+    {%- if f_path_start == cur_file_dir -%}
+      {%- if cur_deep_size == f_deep_size -%}
+        {%- assign f_s_path = f.path | slice: 0, 1 -%}
+        {%- assign f_e_path = f.path | slice: -1, 1 -%}
+        {%- assign cur_files = cur_files | push: f -%}
+        console.log('f.path:', ' ({{ cur_deep_size }},{{ f_deep_size }}) {{- f.path -}}');
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+  console.groupEnd();
+
+
+  <!-- pages -->
+console.group('pages');
+  {%- for f in all_pages -%}
+    {%- assign f_path = "/" | append: f.path -%}
+    {%- assign f_deep = f_path | split: "/" -%}
+    {%- assign f_deep_size = f_deep | size | minus: 1 -%}
+    console.log('f.path:', ' ({{ cur_deep_size }},{{ f_deep_size }}) {{- f_path -}}');
+  {%- endfor -%}
+console.groupEnd();
+
+console.group('cur pages');
+  {%- assign cur_pages = "" | split: "" -%}
+  {%- for f in all_pages -%}
+    {%- assign f_path = "/" | append: f.path -%}
+    {%- assign f_deep = f_path | split: "/" -%}
+    {%- assign f_deep_sub_size = f_deep | size -%}
+    {%- assign f_deep_size = f_deep | size | minus: 1 -%}
+    {%- assign cur_page_dir_len = cur_dir | size -%}
+    {%- assign f_path_start = f_path | slice: 0, cur_page_dir_len -%}
+    {%- assign f_s_path = f_path | slice: 0, 1 -%}
+    {%- assign f_e_path = f_path | slice: -1, 1 -%}
+
+{%- if f_path_start == cur_dir -%}
+      {%- if cur_deep_size == f_deep_size -%}
+        {%- assign f_s_path = f_path | slice: 0, 1 -%}
+        {%- assign f_e_path = f_path | slice: -1, 1 -%}
+        {%- assign cur_pages = cur_pages | push: f -%}
+        console.log('f.path:', ' ({{ cur_deep_size }},{{ f_deep_size }}) {{- f_path -}}');
+
+      {% elsif cur_deep_size == f_deep_sub_size and f.name == 'index.md' -%}
+        {%- assign cur_pages = cur_pages | push: f -%}
+        console.log('f.path:', ' ({{ cur_deep_size }},{{ f_deep_size }}) {{- f_path -}}');
+
+      {% else %}
+        console.log('* f.path:', ' ({{ cur_deep_size }},{{ f_deep_size }}) {{- f_path -}}');
+
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+console.groupEnd();
+
+  {%- capture cur_files_json -%}
+  [
+  {%- for f in cur_files -%}
+    {
+      "name": {{- f.name | jsonify -}},
+      "path": {{- f.path | jsonify -}},
+      "extname": {{- f.extname | jsonify -}},
+      "modified_time": {{- f.modified_time | jsonify -}},
+      "basename": {{- f.basename | default: "" | jsonify -}},
+      "url": {{- f.url | default: "" | jsonify -}}
+    }{%- unless forloop.last -%},{%- endunless -%}
+  {%- endfor -%}
+  ]
+  {%- endcapture -%}
+
+  {%- capture cur_pages_json -%}
+  [
+  {%- for p in cur_pages -%}
+    {
+      "title": {{- p.title | jsonify -}},
+      "url": {{- p.url | jsonify -}},
+      "path": {{- "/" | append: p.path | jsonify -}},
+      "dir": {{- p.dir | jsonify -}},
+      "name": {{- p.name | default: "" | jsonify -}},
+      "layout": {{- p.layout | default: "" | jsonify -}},
+      "date": {{- p.date | default: "" | jsonify -}},
+      "excerpt": {{- p.excerpt | default: "" | jsonify -}},
+      "categories": {{- p.categories | default: "" | jsonify -}},
+      "tags": {{- p.tags | default: "" | jsonify -}}
+    }{%- unless forloop.last -%},{%- endunless -%}
+  {%- endfor -%}
+  ]
+  {%- endcapture -%}
+
+{%- endif -%}
