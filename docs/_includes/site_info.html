@@ -1,0 +1,76 @@
+<script>
+
+{%- comment -%} 현재 페이지의 페이지 목록을 가져온다 {%- endcomment -%} 
+
+{%- comment -%}
+site.title : 사이트 제목 (_config.yml에서 설정)
+site.description : 사이트 설명
+site.url : 사이트 기본 URL
+site.baseurl : 서브디렉터리 배포 시 base URL
+site.github : GitHub Pages 관련 정보 (자동 생성)
+site.time : 빌드 시각
+site.posts : 모든 게시글(_posts 폴더)의 배열
+site.pages : 모든 페이지(.md, .html 등)의 배열
+site.static_files : 모든 정적 파일(이미지, PDF, zip 등)의 배열
+site.data : _data 폴더의 데이터
+site.collections : 모든 컬렉션 정보
+site.documents : 모든 컬렉션 문서
+site.categories : 모든 카테고리별 게시글
+site.tags : 모든 태그별 게시글
+site.config : 전체 config 값
+
+page.title : 페이지 제목 (Front Matter에서 설정)
+page.url : 페이지의 URL 경로
+page.path : 파일 시스템상의 경로
+page.dir : 파일이 위치한 디렉토리
+page.name : 파일 이름
+page.layout : 사용된 레이아웃 이름
+page.date : 게시 날짜(게시글일 경우)
+page.content : 페이지의 실제 내용(HTML로 변환됨)
+page.excerpt : 요약(게시글일 경우)
+page.categories, page.tags : 카테고리/태그(게시글일 경우
+
+{%- endcomment -%} 
+
+{%- capture site_json -%}
+  {
+    "title": {{- site.title | jsonify -}},
+    "description": {{- site.description | jsonify -}},
+    "url": {{- site.url | jsonify -}},
+    "baseurl": {{- site.baseurl | jsonify -}},
+    "time": {{- site.time | jsonify -}},
+    "posts": {{- site.posts | size | jsonify -}},
+    "pages": {{- site.pages | size | jsonify -}},
+    "static_files": {{- site.static_files | size | jsonify -}},
+    "data": {{- site.data | size | jsonify -}},
+    "collections": {{- site.collections | size | jsonify -}},
+    "documents": {{- site.documents | size | jsonify -}},
+    "categories": {{- site.categories | size | jsonify -}},
+    "tags": {{- site.tags | size | jsonify -}},
+    "config": {{- site.config | size | jsonify -}}
+  }
+{%- endcapture -%}
+
+{%- capture page_json -%}
+  {
+    "title": {{- page.title | jsonify -}},
+    "url": {{- page.url | jsonify -}},
+    "path": {{- page.path | jsonify -}},
+    "dir": {{- page.dir | jsonify -}},
+    "name": {{- page.name | default: "" | jsonify -}},
+    "layout": {{- page.layout | default: "" | jsonify -}},
+    "date": {{- page.date | default: "" | jsonify -}},
+    "content": {{- page.content | default: "" | size | jsonify -}},
+    "excerpt": {{- page.excerpt | default: "" | jsonify -}},
+    "categories": {{- page.categories | default: "" | jsonify -}},
+    "tags": {{- page.tags | default: "" | jsonify -}}
+  }
+{%- endcapture -%}
+  
+  var site = {{- site_json -}};
+  var page = {{- page_json -}};
+
+  console.log('site:', site);
+  console.log('page:', page);
+  
+</script>

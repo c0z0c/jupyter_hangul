@@ -1,0 +1,32 @@
+<script type="text/javascript">
+  var pagePath = "{{- page.path -}}";
+  var pageDir  = "{{- page.dir -}}";
+  console.log('pagePath:', pagePath, 'pageDir:', pageDir);
+
+  var currentFolder = "{{ current_folder }}";
+  var allPages          = {{ all_pages_json | strip_newlines }};
+  var subFiles          = {{ sub_all_files | jsonify }};
+  var subFilesSorted    = {{ sub_all_files_sorted | jsonify }};
+  var subFilesPagesAll  = {{ sub_all_files_pages_all | strip_newlines }};
+  var subFilesPagesCur  = {{ sub_all_files_pages_cur | strip_newlines }};
+  
+  var curPaths          = {{ cur_paths | jsonify }};
+  var curFiles          = {{ cur_files | jsonify }};
+  var curPageFiles      = {{ cur_page_files | jsonify }};
+
+  console.log('currentFolder:', currentFolder);
+  console.log('curPaths (직접 하위폴더):', curPaths);
+  console.log('curFiles (직접 정적파일):', curFiles);
+  console.log('curPageFiles (직접 페이지파일):', curPageFiles);
+  console.log('allPages:', allPages);
+  console.log('subFiles:', subFiles);
+  console.log('subFilesSorted:', subFilesSorted);
+  console.log('subFilesPagesAll (with sub):', subFilesPagesAll);
+  console.log('subFilesPagesCur (only dir):', subFilesPagesCur);
+
+  curPaths.forEach(dir => console.log('[직접폴더]', dir));
+  curFiles.forEach(file => console.log('[직접파일]', file));
+  curPageFiles.forEach(page => console.log('[직접페이지]', page));
+
+  // Jekyll에서 파일 리스트를 동적으로 받아 콘솔에 출력
+</script>

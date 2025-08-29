@@ -1,25 +1,36 @@
 ---
 layout: default
 title: 치트시트
+description: "치트시트"
+date: 2025-08-29
 cache-control: no-cache
 expires: 0
 pragma: no-cache
+author: "김명환"
 ---
 
-# 🚀 Jupyter 한글 환경 설정 치트시트 v2.3.0
+# 🚀 Jupyter 한글 환경 설정 치트시트 v2.4.0
 
 ## 📥 설치
 
 ```python
-from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
 import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 ```
 
 **🎉 출력 예시**:
 ```
-🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.4.0)
 ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
+```
+
+### 🧪 베타 버전 (최신 기능 테스트)
+
+```python
+# 베타 버전 - 실험적 기능 포함
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+import helper_c0z0c_dev as helper
 ```
 
 ## 🎯 주요 특징
