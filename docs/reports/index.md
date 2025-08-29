@@ -172,7 +172,15 @@ pragma: no-cache
       const reportUrl = site_url + file.path.replace('.md', '');
       const isLatest = index === 0;
       const reportIcon = isLatest ? '🆕' : (index <= 2 ? '🔧' : '🚀');
-      const reportTitle = isLatest ? '최신 테스트 리포트' : '테스트 리포트 #' + (curFiles.length - index);
+      let reportTitle = "";
+      if (isLatest) {
+        reportTitle = '최신 테스트 리포트';
+      } else {
+        reportTitle = '테스트 리포트 #' + (curFiles.length - index);
+        if (file.title && file.title.trim() !== '') {
+          reportTitle = file.title;
+        }
+      }
       
       html += '<tr>' +
         '<td>' +
