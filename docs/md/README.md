@@ -9,7 +9,7 @@ pragma: no-cache
 author: "김명환"
 ---
 
-# Jupyter 한글 환경 설정 모듈 v2.3.0
+# Jupyter 한글 환경 설정 모듈 v2.4.0
 
 > 🏠 **[c0z0c 메인 페이지](https://c0z0c.github.io/)** | 🚀 **간단 사용법**: `helper.setup()` 한 번으로 모든 설정 완료!
 
@@ -18,11 +18,12 @@ Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기�
 
 [📺 YouTube 튜토리얼](https://youtu.be/C6XRhqoKBc4)
 
-## 🆕 v2.3.0 주요 업데이트
-- 💾 **캐시 기능 추가**: 데이터/모델 저장으로 재실행 시간 단축
-- 🌐 **크로스 플랫폼 지원**: Windows, Ubuntu, Mac 모든 환경에서 동작
-- 🧪 **37개 유닛 테스트**: 100% 통과로 안정성 보장
-- 📊 **pandas 확장 기능**: DataFrame.head_att() 등 한글 지원 기능
+## 🆕 v2.4.0 주요 업데이트
+- 💾 **캐시 시스템 고도화**: 데이터/모델 저장 성능 향상 및 안정성 증대
+- 🌐 **완벽한 크로스 플랫폼**: Windows, Ubuntu, Mac 모든 환경에서 100% 호환
+- 🧪 **확장된 테스트**: 37개 유닛 테스트로 100% 통과 및 안정성 보장
+- 📊 **pandas 확장 개선**: DataFrame.head_att() 출력 형식 다양화
+- 🚀 **설정 프로세스 최적화**: setup() 함수 개선으로 더 빠른 환경 구성
 
 ## 🎯 빠른 사용법
 
@@ -33,7 +34,7 @@ import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 
 **🎉 출력 예시**:
 ```
-🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.4.0)
 ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
 ```
@@ -347,6 +348,16 @@ helper.setup()  # 문제 해결
 기능 테스트에 도움을 주신 조하나 강사님 감사드립니다.
 
 ## 업데이트 내역
+
+### v2.4.0 (2025.08.29)
+- 🎨 **한글 폰트 자동 설정 개선**: NanumGothic 폰트 다운로드 및 적용 프로세스 최적화
+- 📊 **pandas 확장 기능 강화**: DataFrame.head_att() 출력 형식 다양화 (html, print, str)
+- 💾 **캐시 시스템 고도화**: ML 모델 및 데이터 캐싱 성능 향상 및 안정성 증대
+- 🌐 **크로스 플랫폼 완벽 지원**: Windows, Ubuntu, Mac 환경에서 100% 호환성 확보
+- 🔧 **setup() 함수 개선**: 한 번의 호출로 모든 환경 설정 완료
+- 📁 **파일 읽기 기능 향상**: pd_read_csv() 함수의 다양한 입력 타입 지원 확대
+- 🧪 **테스트 커버리지 확장**: 37개 유닛 테스트로 모든 기능 검증
+- 🚀 **성능 최적화**: 환경 감지 및 초기화 로직 개선으로 더 빠른 설정
 
 ### v2.3.0 (2025.08.03)
 - 📝 **DataFrame 커밋 시스템**: git처럼 DataFrame 버전 관리 (`df.commit()`, `df.commit_list()`)

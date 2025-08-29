@@ -243,17 +243,17 @@ def reset_matplotlib():
     plt.rcParams['font.size'] = 10
     
     # IPython 환경에서 전역 등록 (Jupyter/Colab 호환성 개선)
-    # try:
-    #     if IPYTHON_AVAILABLE:
-    #         ipy = IPython.get_ipython()
-    #         if ipy is not None:
-    #             ipy.user_ns["plt"] = plt
-    #         else:
-    #             globals()["plt"] = plt
-    #     else:
-    #         globals()["plt"] = plt
-    # except Exception:
-    #     globals()["plt"] = plt
+    try:
+        if IPYTHON_AVAILABLE:
+            ipy = IPython.get_ipython()
+            if ipy is not None:
+                ipy.user_ns["plt"] = plt
+            else:
+                globals()["plt"] = plt
+        else:
+            globals()["plt"] = plt
+    except Exception:
+        globals()["plt"] = plt
     
     return plt
 

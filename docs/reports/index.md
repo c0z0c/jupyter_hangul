@@ -112,7 +112,7 @@ pragma: no-cache
   // 리포트 설명 생성 함수
   function getReportDescription(index, total) {
     if (index === 0) {
-      return 'v2.3.0 완전 테스트 - 37개 테스트 모두 통과';
+      return '최신 완전 테스트 - 37개 테스트 모두 통과';
     } else if (index === 1) {
       return '캐시 기능 및 DataFrame 커밋 시스템 검증';
     } else if (index === 2) {
@@ -143,7 +143,7 @@ pragma: no-cache
     const summaryElement = document.querySelector('.summary');
     if (summaryElement) {
       summaryElement.innerHTML = '<h3><span class="emoji">📊</span> 테스트 요약</h3>' +
-        '<p>Helper Module v2.3.0의 안정성과 신뢰성을 보장하기 위한 지속적인 테스트 결과입니다.</p>' +
+        '<p>Helper Module의 안정성과 신뢰성을 보장하기 위한 지속적인 테스트 결과입니다.</p>' +
         '<ul>' +
         '<li><strong>총 리포트 수:</strong> ' + curFiles.length + '개</li>' +
         '<li><strong>최신 테스트:</strong> 37개 테스트 모두 통과 (100% 성공률)</li>' +
@@ -208,7 +208,7 @@ pragma: no-cache
 <!-- 나머지 HTML 내용은 그대로 유지 -->
 <div class="summary">
   <h3><span class="emoji">📊</span> 테스트 요약</h3>
-  <p>Helper Module v2.3.0의 안정성과 신뢰성을 보장하기 위한 지속적인 테스트 결과입니다.</p>
+  <p>Helper Module의 안정성과 신뢰성을 보장하기 위한 지속적인 테스트 결과입니다.</p>
   <ul>
     <li><strong>최신 테스트:</strong> 37개 테스트 모두 통과 (100% 성공률)</li>
     <li><strong>테스트 범위:</strong> 캐시 기능, pandas 확장, DataFrame 커밋, 파일 처리, 에러 핸들링</li>
@@ -225,7 +225,7 @@ pragma: no-cache
 <h2><span class="emoji">📈</span> 테스트 발전 과정</h2>
 
 <div style="background: #404040; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #555;">
-  <h4>2025년 8월 3일 - v2.3.0 최종 검증</h4>
+  <h4>2025년 8월 3일 - 최종 검증</h4>
   <ul>
     <li>37개 전체 테스트 항목 완성</li>
     <li>DataFrame 커밋 시스템 완전 검증</li>

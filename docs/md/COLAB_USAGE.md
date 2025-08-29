@@ -9,7 +9,7 @@ pragma: no-cache
 author: "김명환"
 ---
 
-# 🚀 Colab 한글 폰트 설정 가이드 v2.3.0
+# 🚀 Colab 한글 폰트 설정 가이드 v2.4.0
 
 ## 📋 간단한 사용법
 
@@ -23,7 +23,7 @@ import helper_c0z0c_dev as helper # 한번에 모든 설정 완료
 
 **🎉 출력 예시**:
 ```
-🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
+🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.4.0)
 ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
 ```
@@ -128,7 +128,7 @@ plt.show()
 import pandas as pd
 df = pd.DataFrame({'이름': ['김철수', '이영희'], '나이': [25, 30]})
 
-# 컬럼 설명 추가 - v2.3.0 개선된 기능
+# 컬럼 설명 추가 - v2.4.0 개선된 기능
 df.set_head_att({'이름': '사용자 이름', '나이': '사용자 나이'})
 
 # 한글 설명과 함께 출력 (다양한 형식 지원)
@@ -142,7 +142,7 @@ series.set_head_att('이름', '사용자 이름')
 series.head_att(out='html')
 ```
 
-### 캐시 기능 (v2.3.0 신기능)
+### 캐시 기능 (v2.4.0 신기능)
 ```python
 # 분석 결과 저장 (Colab Drive 연동)
 analysis_result = {"accuracy": 0.95, "loss": 0.05}
@@ -161,7 +161,7 @@ helper.cache_list()    # 저장된 항목 목록
 helper.cache_clear()   # 전체 캐시 삭제
 ```
 
-### DataFrame 커밋 기능 (v2.3.0 신기능)
+### DataFrame 커밋 기능 (v2.4.0 신기능)
 ```python
 # DataFrame을 git처럼 버전 관리
 df.commit("원본 데이터 로드")
@@ -227,10 +227,10 @@ helper.cache_size()           # 캐시 디렉토리 크기
 # 경로: /content/drive/MyDrive/cache.json
 ```
 
-## ❓ 자주 묻는 질문 (v2.3.0 업데이트)
+## ❓ 자주 묻는 질문
 
 ### Q: 한글이 여전히 깨져요
-A: `helper.setup()`을 다시 실행해보세요. v2.3.0에서는 크로스 플랫폼 지원이 강화되어 대부분 즉시 해결됩니다.
+A: `helper.setup()`을 다시 실행해보세요. 크로스 플랫폼 지원이 강화되어 대부분 즉시 해결됩니다.
 
 ### Q: 캐시 파일이 너무 커져요
 A: `helper.cache_size()`로 크기를 확인하고, `helper.cache_clear()`로 불필요한 캐시를 정리하세요.
@@ -242,13 +242,13 @@ A: 캐시 저장 위치를 변경하거나 `helper.cache_list()`로 불필요한
 A: 네! Google Drive가 연결되어 있으면 `/content/drive/MyDrive/cache.json`에 영구 저장됩니다.
 
 ### Q: 설정이 적용되지 않아요
-A: `helper.setup()`을 다시 실행하세요. v2.3.0의 개선된 UTF-8 설정이 자동으로 적용됩니다.
+A: `helper.setup()`을 다시 실행하세요. 개선된 UTF-8 설정이 자동으로 적용됩니다.
 
 ### Q: DataFrame의 한글 컬럼 설명이 안 보여요
 A: `df.head_att(out='html')`을 사용하면 Colab에서 예쁘게 표시됩니다.
 
 ### Q: 캐시된 데이터를 다른 환경에서도 사용할 수 있나요?
-A: 네! v2.3.0은 Windows, Ubuntu, Mac 모든 환경에서 호환됩니다.
+A: 네! Windows, Ubuntu, Mac 모든 환경에서 호환됩니다.
 
 ### Q: 캐시 기능을 사용하고 싶어요
 A: `helper.cache_key()`, `helper.cache_save()`, `helper.cache_load()` 함수를 사용하세요. Colab에서는 Google Drive에 자동 저장됩니다.
@@ -277,7 +277,7 @@ helper.set_pandas_extension()
 
 ### 환경별 경로 확인 및 파일 읽기
 ```python
-# 현재 환경 확인 (v2.3.0 개선된 환경 감지)
+# 현재 환경 확인 (개선된 환경 감지)
 if helper.is_colab:
     print("Colab 환경")
     print("캐시 위치: /content/drive/MyDrive/cache.json")
@@ -291,8 +291,8 @@ df1 = helper.pd_read_csv('test.csv')  # 자동 경로 변환
 # URL은 그대로 전달
 df2 = helper.pd_read_csv('https://raw.githubusercontent.com/user/repo/data.csv')
 
-# 캐시 기능 테스트 (v2.3.0 DataCatch 시스템)
-params = {'test': True, 'version': '2.3.0'}
+# 캐시 기능 테스트 (DataCatch 시스템)
+params = {'test': True, 'version': 'latest'}
 cache_key = helper.cache_key(params)
 helper.cache_save(cache_key, df1)
 cached_df = helper.cache_load(cache_key)
@@ -306,7 +306,7 @@ print(f"캐시 디렉토리 크기: {helper.cache_size()}")
 ## 📞 지원
 
 문제가 지속되면 다음을 확인하세요:
-- v2.3.0 사용 여부 (`helper.__version__` 확인) 
+- 최신 버전 사용 여부 (`helper.__version__` 확인) 
 - `helper.setup()` 재실행
 - 네트워크 연결 상태
 - Google Drive 접근 권한 (Colab 환경)
@@ -314,7 +314,7 @@ print(f"캐시 디렉토리 크기: {helper.cache_size()}")
 ### 💡 팁
 - 대부분의 문제는 `helper.setup()`으로 해결됩니다
 - 캐시 관련 문제는 `helper.cache_clear()`로 초기화해보세요
-- v2.3.0은 Windows, Ubuntu, Mac 모든 환경을 지원합니다
+- Windows, Ubuntu, Mac 모든 환경을 지원합니다
 
 ---
-*작성자: 김명환 | 날짜: 2025.01.01 | 버전: v2.3.0*
+*작성자: 김명환 | 날짜: 2025.01.01 | 버전: v2.4.0*

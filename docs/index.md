@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Jupyter 한글 환경 설정 모듈 v2.3.0
+title: Jupyter 한글 환경 설정 모듈
 description: Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈
 date: 2025-08-29
 cache-control: no-cache
@@ -136,7 +136,7 @@ pragma: no-cache
     </a>
 </div>
 
-# <span class="emoji">🚀</span> Jupyter 한글 환경 설정 모듈 v2.3.0
+# <span class="emoji">🚀</span> Jupyter 한글 환경 설정 모듈 v2.4.0
 
 <div class="highlight">
     <strong><span class="emoji">🎯</span> 빠른 사용법:</strong> <code>helper.setup()</code> 한 번으로 모든 설정 완료!
@@ -163,7 +163,7 @@ Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기�
     </a>
 </div>
 
-## <span class="emoji">🆕</span> v2.3.0 주요 업데이트 <span class="update-badge">NEW</span>
+## <span class="emoji">🆕</span> v2.4.0 주요 업데이트 <span class="update-badge">NEW</span>
 
 <div class="features">
     <div class="feature">
@@ -196,7 +196,7 @@ from urllib.request import urlretrieve; urlretrieve("https://raw.githubuserconte
 import helper_c0z0c_dev as helper
 
 # 출력 예시:
-# 🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.3.0)
+# 🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.4.0)
 # ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
 # 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
 ```
@@ -218,7 +218,7 @@ import helper_c0z0c_dev as helper
         <div class="report-item">
             <h4><a href="{{ site.baseurl }}/reports/">최신 테스트 리포트</a></h4>
             <p class="report-date">자동 업데이트</p>
-            <p><strong>37개 테스트 모두 통과</strong> - v2.3.0 안정성 검증</p>
+            <p><strong>37개 테스트 모두 통과</strong> - v2.4.0 안정성 검증</p>
         </div>
         <div class="report-item">
             <h4><a href="{{ site.baseurl }}/reports/">전체 테스트 히스토리</a></h4>
@@ -245,6 +245,6 @@ import helper_c0z0c_dev as helper
 ---
 
 <div class="footer-info">
-    <p>© 2025 Helper Module v2.3.0 | 감사 인사: 조하나 강사님</p>
+    <p>© 2025 Helper Module v2.4.0 | 감사 인사: 조하나 강사님</p>
     <p>Last updated: 2025년 8월 29일</p>
 </div>
