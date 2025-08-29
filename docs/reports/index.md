@@ -10,16 +10,14 @@ pragma: no-cache
 
 # 🧪 테스트 리포트 히스토리
 
-{% raw %}
 <script>
 
-{%- assign cur_dir = "/docs/reports/" -%}
+{%- assign cur_dir = "/reports/" -%}
 {%- include cur_files.liquid -%}
 
   var curDir = '{{- cur_file_dir -}}';
   var curFiles = {{- cur_files_json -}};
   var curPages = {{- cur_pages_json -}};
-{% endraw %}
   
   console.log('curDir:', curDir);
   console.log('curFiles:', curFiles);
