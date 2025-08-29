@@ -540,7 +540,7 @@ def setup():
     is_print_log = True
     if _last_setup_time is not None:
         elapsed = now - _last_setup_time
-        if elapsed < 1.0:
+        if elapsed < 2.0:
             is_print_log = False
     _last_setup_time = now    
     
