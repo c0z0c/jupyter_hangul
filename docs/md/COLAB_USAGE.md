@@ -1,9 +1,12 @@
 ---
 layout: default
 title: Colab 가이드
+description: "Colab 가이드"
+date: 2025-08-29
 cache-control: no-cache
 expires: 0
 pragma: no-cache
+author: "김명환"
 ---
 
 # 🚀 Colab 한글 폰트 설정 가이드 v2.3.0

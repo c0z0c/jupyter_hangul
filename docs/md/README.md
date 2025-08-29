@@ -1,9 +1,12 @@
 ---
 layout: default
 title: 전체 문서
+description: "전체 문서"
+date: 2025-08-29
 cache-control: no-cache
 expires: 0
 pragma: no-cache
+author: "김명환"
 ---
 
 # Jupyter 한글 환경 설정 모듈 v2.3.0

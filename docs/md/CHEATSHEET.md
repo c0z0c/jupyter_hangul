@@ -1,9 +1,12 @@
 ---
 layout: default
 title: 치트시트
+description: "치트시트"
+date: 2025-08-29
 cache-control: no-cache
 expires: 0
 pragma: no-cache
+author: "김명환"
 ---
 
 # 🚀 Jupyter 한글 환경 설정 치트시트 v2.3.0
