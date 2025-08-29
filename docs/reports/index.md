@@ -35,7 +35,7 @@ pragma: no-cache
       }
 
       // basename 추출
-      let basename = page.name ? page.name.replace(/\.[^/.]+$/, '') : '';
+      let basename = page.name ? page.name.substring(0, page.name.lastIndexOf('.')) || page.name : '';
 
       // modified_time 처리 (page.date가 없으면 빈 문자열)
       let modified_time = page.date || '';
@@ -78,7 +78,8 @@ pragma: no-cache
   // 파일명에서 날짜/시간 파싱 함수
   function parseReportDate(filename) {
     // test_report_20250803_142530.md 형식에서 날짜/시간 추출
-    const match = filename.match(/test_report_(\d{8})_(\d{6})\.md/);
+    const regexPattern = new RegExp('test_report_(\\d{8})_(\\d{6})\\.md');
+    const match = filename.match(regexPattern);
     if (!match) return { date: '', time: '', formatted: '날짜 미상' };
     
     const dateStr = match[1]; // 20250803
