@@ -53,6 +53,7 @@ import sys
 import time
 import urllib.request
 import warnings
+import datetime
 
 # Third-party imports
 import matplotlib.font_manager
@@ -83,14 +84,17 @@ except ImportError:
 __version__ = "2.4.0"
 
 # Font management
-font_path = ""
+__font_path = ""
 is_colab = False
 
 # Pandas commit system
-_COMMIT_META_FILE = "pandas_df.json"
-pd_root_base = None
+__COMMIT_META_FILE = "pandas_df.json"
+__pd_root_base = None
+__last_setup_time = None  # 모듈 전역 변수로 선언 (출력 메시지 컨트롤)
+__is_setup_print_log = False
 
-DEBUG_ON = False
+# __DEBUG_ON = True
+__DEBUG_ON = False
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -127,7 +131,7 @@ def _format_value(value):
 
 def font_download():
     """폰트를 다운로드하거나 설치합니다."""
-    global font_path
+    global __font_path
     
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
@@ -135,7 +139,7 @@ def font_download():
     if _in_colab():
         # 이미 설치되어 있는지 확인
         if os.system("dpkg -l | grep fonts-nanum") == 0:
-            if DEBUG_ON:
+            if __DEBUG_ON:
                 print("✅ Colab에 나눔 폰트가 이미 설치되어 있습니다.")
             return True
             
@@ -146,7 +150,7 @@ def font_download():
             subprocess.run(['sudo', 'fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)            
             
-            if DEBUG_ON:
+            if __DEBUG_ON:
                 print("✅ Colab에 나눔 폰트 설치 완료")
             return True
             
@@ -157,13 +161,13 @@ def font_download():
         font_url = "https://github.com/c0z0c/jupyter_hangul/raw/master/NanumGothic.ttf"
         font_dir = "fonts"
         os.makedirs(font_dir, exist_ok=True)
-        font_path = os.path.join(font_dir, "NanumGothic.ttf")
+        __font_path = os.path.join(font_dir, "NanumGothic.ttf")
         
-        if not os.path.exists(font_path):
-            if DEBUG_ON:
+        if not os.path.exists(__font_path):
+            if __DEBUG_ON:
                 print("🔽 로컬에 나눔 폰트 다운로드 중...")           
-            urllib.request.urlretrieve(font_url, font_path)
-            if DEBUG_ON:
+            urllib.request.urlretrieve(font_url, __font_path)
+            if __DEBUG_ON:
                 print("🔽 로컬에 나눔 폰트 다운로드 완료")
         return True
 
@@ -189,21 +193,21 @@ def reset_matplotlib():
     """matplotlib 완전 리셋 (NumPy 호환성 개선)"""
     # matplotlib 모듈들을 sys.modules에서 제거
     
-    if DEBUG_ON:
+    if __DEBUG_ON:
         print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
 
     modules_to_remove = [mod for mod in sys.modules if mod.startswith('matplotlib')]
     for mod in modules_to_remove:
         del sys.modules[mod]
 
-    if DEBUG_ON:
+    if __DEBUG_ON:
         print("✅ matplotlib 모듈 제거 완료")
     
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as fm
 
 
-    if DEBUG_ON:
+    if __DEBUG_ON:
         print("✅ matplotlib 다시 로드 완료")
     
     # 폰트 캐시 클리어 (중요!)
@@ -221,9 +225,9 @@ def reset_matplotlib():
     if _in_colab():
         plt.rcParams['font.family'] = 'NanumBarunGothic'
     else:
-        global font_path
-        if font_path and os.path.exists(font_path):
-            fm.fontManager.addfont(font_path)
+        global __font_path
+        if __font_path and os.path.exists(__font_path):
+            fm.fontManager.addfont(__font_path)
             plt.rcParams['font.family'] = 'NanumGothic'
         else:
             available_fonts = [f.name for f in fm.fontManager.ttflist]
@@ -232,7 +236,7 @@ def reset_matplotlib():
             for font in korean_fonts:
                 if font in available_fonts:
                     plt.rcParams['font.family'] = font
-                    if DEBUG_ON:
+                    if __DEBUG_ON:
                         print(f"✅ {font} 폰트가 설정되었습니다.")
                     break
             else:
@@ -259,7 +263,7 @@ def reset_matplotlib():
 
 def load_font():
     """폰트를 로딩하고 설정합니다."""
-    global font_path, is_colab
+    global __font_path, is_colab
 
     try:
         # matplotlib 경고 억제
@@ -282,7 +286,7 @@ def load_font():
                 current_font = current_font[0] if current_font else 'default'
             
             if 'nanum' in current_font.lower() or 'gothic' in current_font.lower():
-                if DEBUG_ON:
+                if __DEBUG_ON:
                     print("✅ Colab에 한글 폰트가 이미 설정되어 있습니다.")
                 return True
             
@@ -305,7 +309,7 @@ def load_font():
                 return True
 
             try:
-                if font_path and os.path.exists(font_path):
+                if __font_path and os.path.exists(__font_path):
                     reset_matplotlib()
                     return True
                 else:
@@ -364,7 +368,7 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
     """
     # 문자열 경로일 경우에만 경로 변환 처리 (URL 제외)
     if isinstance(filepath_or_buffer, str) and not filepath_or_buffer.startswith(('http://', 'https://', 'ftp://', 'file://')):
-        # pd_root_base/pd_root 정책 적용
+        # __pd_root_base/pd_root 정책 적용
         full_path = os.path.join(pd_root(), filepath_or_buffer) if not os.path.isabs(filepath_or_buffer) else filepath_or_buffer
         try:
             if not os.path.exists(full_path):
@@ -401,19 +405,19 @@ def set_pd_root_base(subdir=None):
     if _in_colab():
         base = "/content/drive/MyDrive"
         if subdir is None or subdir == "":
-            pd_root_base = base
+            __pd_root_base = base
         elif subdir.startswith("/"):
-            pd_root_base = base + subdir
+            __pd_root_base = base + subdir
         else:
-            pd_root_base = os.path.join(base, subdir)
+            __pd_root_base = os.path.join(base, subdir)
     else:
         base = "."
         if subdir is None or subdir == "":
-            pd_root_base = base
+            __pd_root_base = base
         elif subdir.startswith("/"):
-            pd_root_base = base + subdir
+            __pd_root_base = base + subdir
         else:
-            pd_root_base = os.path.join(base, subdir)
+            __pd_root_base = os.path.join(base, subdir)
 
 def pd_root(commit_dir=None):
     """
@@ -422,8 +426,8 @@ def pd_root(commit_dir=None):
     """
     if commit_dir is not None:
         return os.path.abspath(commit_dir)
-    if pd_root_base is not None:
-        return os.path.abspath(pd_root_base)
+    if __pd_root_base is not None:
+        return os.path.abspath(__pd_root_base)
     # 기본값 설정
     if _in_colab():
         return "/content/drive/MyDrive"
@@ -432,7 +436,7 @@ def pd_root(commit_dir=None):
 
 def _load_commit_meta(commit_dir=None):
     """커밋 메타데이터를 로드합니다."""
-    meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), _COMMIT_META_FILE)
+    meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), __COMMIT_META_FILE)
     if os.path.exists(meta_file):
         try:
             with open(meta_file, "r", encoding="utf-8") as f:
@@ -443,7 +447,7 @@ def _load_commit_meta(commit_dir=None):
 
 def _save_commit_meta(meta, commit_dir=None):
     """커밋 메타데이터를 저장합니다."""
-    meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), _COMMIT_META_FILE)
+    meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), __COMMIT_META_FILE)
     os.makedirs(os.path.dirname(meta_file), exist_ok=True)
     with open(meta_file, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
@@ -527,22 +531,37 @@ def _check_numpy_compatibility():
 # =============================================================================
 # MAIN SETUP FUNCTION
 # =============================================================================
-_last_setup_time = None  # 모듈 전역 변수로 선언 (출력 메시지 컨트롤)
 def setup():
     """한번에 모든 설정 완료"""
+    global __pd_root_base
+    global __last_setup_time
+    global __is_setup_print_log
     
-    if DEBUG_ON:
+    if __DEBUG_ON:
         print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
+        if __last_setup_time is not None:
+            print(f"   - __last_setup_time : {datetime.datetime.fromtimestamp(__last_setup_time).strftime('%Y-%m-%d %H:%M:%S')}")
+        else:
+            print(f"   - __last_setup_time : None")
 
-    global pd_root_base
-    global _last_setup_time
     now = time.time()
-    is_print_log = True
-    if _last_setup_time is not None:
-        elapsed = now - _last_setup_time
+    __is_setup_print_log = True
+    if __last_setup_time is not None:
+        elapsed = now - __last_setup_time
         if elapsed < 2.0:
-            is_print_log = False
-    _last_setup_time = now    
+            __is_setup_print_log = False
+        else:
+            __is_setup_print_log = True
+            __last_setup_time = now
+    else:
+        __is_setup_print_log = True
+        __last_setup_time = now
+    
+    if __DEBUG_ON:
+        print(f"   - now : {datetime.datetime.fromtimestamp(now).strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   - __last_setup_time : {datetime.datetime.fromtimestamp(__last_setup_time).strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   - __is_setup_print_log : {__is_setup_print_log}")
+    
     
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
@@ -568,7 +587,7 @@ def setup():
                     warnings.simplefilter("ignore")
                     set_pandas_extension()
                 
-                if is_print_log:
+                if __is_setup_print_log:
                     print("✅ 설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
                 return
         print("❌ 설정 실패")
@@ -2592,4 +2611,5 @@ if __name__ != "__main__":
     print("🌐 https://c0z0c.github.io/jupyter_hangul")
     setup()
     set_pd_root_base()
-    print('pd commit 저장 경로 =', pd_root())
+    if __is_setup_print_log:
+        print('pd commit 저장 경로 =', pd_root())
