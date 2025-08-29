@@ -36,39 +36,68 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 버전: 2.2.0
 """
 
-import os
-import matplotlib.pyplot as plt
-import pandas as pd
-import json
+# =============================================================================
+# IMPORTS
+# =============================================================================
+
+# Standard library imports
+import datetime
+import gzip
 import hashlib
+import json
+import os
+import pickle
+import shutil
+import subprocess
 import sys
 import time
-import shutil
-import gzip
 import urllib.request
 import warnings
-import subprocess
-import numpy as np
-import datetime
-import pickle
 
-# 전역 변수
-__version__ = "2.3.0"
+# Third-party imports
+import matplotlib.font_manager
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+
+# Environment-specific imports (handled with try/except in functions)
+try:
+    import IPython
+    from IPython.display import HTML
+    IPYTHON_AVAILABLE = True
+except ImportError:
+    IPYTHON_AVAILABLE = False
+
+try:
+    import google.colab
+    from google.colab import drive
+    COLAB_AVAILABLE = True
+except ImportError:
+    COLAB_AVAILABLE = False
+
+
+# =============================================================================
+# CONSTANTS AND GLOBAL VARIABLES
+# =============================================================================
+
+__version__ = "2.4.0"
+
+# Font management
 font_path = ""
 is_colab = False
 
-# pandas commit 시스템 전역 변수
+# Pandas commit system
 _COMMIT_META_FILE = "pandas_df.json"
 pd_root_base = None
 
-# 공통 유틸리티 함수
+DEBUG_ON = True
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
 def _in_colab():
     """Colab 환경 감지"""
-    try:
-        import google.colab
-        return True
-    except ImportError:
-        return False
+    return COLAB_AVAILABLE
 
 def _get_text_width(text):
     """텍스트 폭 계산 (한글 2칸, 영문 1칸)"""
@@ -106,14 +135,19 @@ def font_download():
     if _in_colab():
         # 이미 설치되어 있는지 확인
         if os.system("dpkg -l | grep fonts-nanum") == 0:
+            if DEBUG_ON:
+                print("✅ Colab에 나눔 폰트가 이미 설치되어 있습니다.")
             return True
             
         try:
             # 나눔 폰트 패키지 설치 및 캐시 업데이트 (출력 최소화)
-            print("install fonts-nanum")
+            print("install fonts-nanum...")
             subprocess.run(['sudo', 'apt-get', 'install', '-y', 'fonts-nanum', "-qq"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['sudo', 'fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(['rm', '-rf', os.path.expanduser('~/.cache/matplotlib')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)            
+            
+            if DEBUG_ON:
+                print("✅ Colab에 나눔 폰트 설치 완료")
             return True
             
         except Exception as e:
@@ -126,8 +160,11 @@ def font_download():
         font_path = os.path.join(font_dir, "NanumGothic.ttf")
         
         if not os.path.exists(font_path):
+            if DEBUG_ON:
+                print("🔽 로컬에 나눔 폰트 다운로드 중...")           
             urllib.request.urlretrieve(font_url, font_path)
-        
+            if DEBUG_ON:
+                print("🔽 로컬에 나눔 폰트 다운로드 완료")
         return True
 
 def _colab_font_reinstall():
@@ -135,7 +172,7 @@ def _colab_font_reinstall():
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
-    print("🔄 폰트 문제 발생 - helper.setup() 다시 실행 권장")
+    print("🔄 폰트 문제 감지 - helper.setup() 재실행 권장")
     
     try:
         # 캐시 정리 및 패키지 재설치 (출력 없이)
@@ -149,15 +186,24 @@ def _colab_font_reinstall():
         pass
 
 def reset_matplotlib():
-    """matplotlib 완전 리셋"""
+    """matplotlib 완전 리셋 (NumPy 호환성 개선)"""
     # matplotlib 모듈들을 sys.modules에서 제거
+    
+    print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
+
     modules_to_remove = [mod for mod in sys.modules if mod.startswith('matplotlib')]
     for mod in modules_to_remove:
         del sys.modules[mod]
+
+    if DEBUG_ON:
+        print("✅ matplotlib 모듈 제거 완료")
     
-    # 다시 import
     import matplotlib.pyplot as plt
     import matplotlib.font_manager as fm
+
+
+    if DEBUG_ON:
+        print("✅ matplotlib 다시 로드 완료")
     
     # 폰트 캐시 클리어 (중요!)
     try:
@@ -172,32 +218,42 @@ def reset_matplotlib():
     
     # 환경별 폰트 설정
     if _in_colab():
-        # Colab 환경: 시스템에 설치된 나눔 폰트 사용
         plt.rcParams['font.family'] = 'NanumBarunGothic'
     else:
-        # 로컬 환경: 다운로드한 폰트 파일 사용
         global font_path
         if font_path and os.path.exists(font_path):
-            # 폰트 파일을 시스템에 등록
             fm.fontManager.addfont(font_path)
             plt.rcParams['font.family'] = 'NanumGothic'
         else:
-            # 폰트 파일이 없으면 시스템 한글 폰트 시도
             available_fonts = [f.name for f in fm.fontManager.ttflist]
             korean_fonts = ['Malgun Gothic', 'AppleGothic', 'NanumGothic', 'Noto Sans CJK KR']
             
             for font in korean_fonts:
                 if font in available_fonts:
                     plt.rcParams['font.family'] = font
+                    if DEBUG_ON:
+                        print(f"✅ {font} 폰트가 설정되었습니다.")
                     break
             else:
                 plt.rcParams['font.family'] = 'DejaVu Sans'
                 print("⚠️ 한글 폰트를 찾을 수 없습니다. font_download()를 먼저 실행하세요.")
     
     plt.rcParams['axes.unicode_minus'] = False
-    plt.rcParams['font.size'] = 10  # 기본 폰트 사이즈 10으로 설정    
+    plt.rcParams['font.size'] = 10
     
-    print("✅ matplotlib 한글 폰트 설정 완료")
+    # IPython 환경에서 전역 등록 (Jupyter/Colab 호환성 개선)
+    # try:
+    #     if IPYTHON_AVAILABLE:
+    #         ipy = IPython.get_ipython()
+    #         if ipy is not None:
+    #             ipy.user_ns["plt"] = plt
+    #         else:
+    #             globals()["plt"] = plt
+    #     else:
+    #         globals()["plt"] = plt
+    # except Exception:
+    #     globals()["plt"] = plt
+    
     return plt
 
 def load_font():
@@ -213,8 +269,8 @@ def load_font():
             
             # Google Drive 마운트 시도 (출력 없이)
             try:
-                from google.colab import drive
-                drive.mount("/content/drive", force_remount=True)
+                if COLAB_AVAILABLE:
+                    drive.mount("/content/drive", force_remount=True)
             except Exception:
                 pass
             
@@ -225,6 +281,8 @@ def load_font():
                 current_font = current_font[0] if current_font else 'default'
             
             if 'nanum' in current_font.lower() or 'gothic' in current_font.lower():
+                if DEBUG_ON:
+                    print("✅ Colab에 한글 폰트가 이미 설정되어 있습니다.")
                 return True
             
             # 폰트 설정 시도 (출력 최소화)
@@ -267,6 +325,11 @@ def load_font():
 # pandas 옵션 설정
 pd.set_option("display.max_rows", 30)
 pd.set_option("display.max_columns", 100)
+
+
+# =============================================================================
+# FILE I/O FUNCTIONS
+# =============================================================================
 
 def pd_read_csv(filepath_or_buffer, **kwargs):
     """
@@ -390,6 +453,11 @@ def _generate_commit_hash(dt, msg):
     base = f"{dt.strftime('%Y%m%d_%H%M%S')}_{msg}"
     return hashlib.md5(base.encode("utf-8")).hexdigest()[:12]
 
+
+# =============================================================================
+# PANDAS EXTENSION FUNCTIONS
+# =============================================================================
+
 def set_pandas_extension():
     """pandas DataFrame/Series에 한글 컬럼 설명 기능을 추가합니다."""
     # 기본 기능
@@ -436,6 +504,30 @@ def set_pandas_extension():
     setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
     setattr(pd.DataFrame, "commit_has", classmethod(_df_commit_has))
 
+# =============================================================================
+# FONT MANAGEMENT FUNCTIONS
+# =============================================================================
+
+def _check_numpy_compatibility():
+    """NumPy 버전 호환성 체크"""
+    try:
+        major_version = int(np.__version__.split('.')[0])
+        minor_version = int(np.__version__.split('.')[1])
+        
+        if major_version >= 2:
+            print(f"ℹ️ NumPy {np.__version__} (v2.x+): 호환성 모드 적용됨")
+        elif major_version == 1 and minor_version < 20:
+            print(f"⚠️ NumPy {np.__version__}: 구 버전 감지, 일부 기능 제한 가능")
+        
+        return True
+    except Exception:
+        return False
+
+
+# =============================================================================
+# MAIN SETUP FUNCTION
+# =============================================================================
+
 def setup():
     """한번에 모든 설정 완료"""
     
@@ -444,10 +536,12 @@ def setup():
     
     print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
     
+    # NumPy 호환성 체크
+    _check_numpy_compatibility()
+    
     try:
         
         if not _in_colab():
-            import os
             os.system('chcp 65001')
             os.environ['PYTHONIOENCODING'] = 'utf-8'
 
@@ -461,8 +555,7 @@ def setup():
                     warnings.simplefilter("ignore")
                     set_pandas_extension()
                 
-                print("✅ 한글 폰트 및 pandas 확장 기능 설정 완료")
-                print("🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능")
+                print("✅ 설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
                 return
         
         print("❌ 설정 실패")
@@ -472,8 +565,12 @@ def setup():
         print(f"❌ 설정 오류: {str(e)}")
         return
 
+
+# =============================================================================
+# PANDAS COMMIT SYSTEM
+# =============================================================================
+
 # pandas commit 시스템 DataFrame 메소드 wrappers
-import pandas as pd  # ensure pandas is imported
 
 def _df_commit(self, msg, commit_dir=None):
     """
@@ -520,6 +617,11 @@ def _df_commit_has(cls, idx_or_hash, commit_dir=None):
         pd.DataFrame.commit_has("메시지")
     """
     return pd_commit_has(idx_or_hash, commit_dir)
+
+
+# =============================================================================
+# CACHE SYSTEM API
+# =============================================================================
 
 # 캐시 관련 helper API 함수들
 def cache_key(*datas, **kwargs):
@@ -690,7 +792,7 @@ def cache_clear(cache_file=None):
     >>> helper.cache_clear()  # 모든 캐시 삭제
     """
     DataCatch.clear_cache(cache_file)
-    print("캐시가 전체 초기화되었습니다.")
+    print("캐시 초기화 완료")
 
 def cache_info(cache_file=None):
     """
@@ -784,7 +886,11 @@ def cache_size(cache_file=None):
     """
     return DataCatch.size(cache_file)
 
-# pandas 확장 기능 함수들
+
+# =============================================================================
+# PANDAS EXTENSION: BASIC COLUMN DESCRIPTION FUNCTIONS
+# =============================================================================
+
 def set_head_att(self, key_or_dict, value=None):
     """
     컬럼 설명을 설정합니다.
@@ -1022,8 +1128,10 @@ def pd_head_att(self, rows=5, out=None):
             for col in df_copy.columns:
                 df_copy[col] = df_copy[col].apply(_format_value)
             df_copy.columns = list(df_display.columns)
-            from IPython.display import HTML
-            return HTML(df_copy.to_html(escape=False))
+            if IPYTHON_AVAILABLE:
+                return HTML(df_copy.to_html(escape=False))
+            else:
+                return df_copy.to_html(escape=False)
         elif out.lower() in ['str', 'string']:
             # 문자열 형태로 오리지널 컬럼명만 출력
             column_widths = _calculate_column_widths(df_display, {})
@@ -1105,8 +1213,10 @@ def _html_head_att(self, df_display, labels):
         df_copy[col] = df_copy[col].apply(_format_value)
     df_copy.columns = header
     
-    from IPython.display import HTML
-    return HTML(df_copy.to_html(escape=False))
+    if IPYTHON_AVAILABLE:
+        return HTML(df_copy.to_html(escape=False))
+    else:
+        return df_copy.to_html(escape=False)
 
 def _string_head_att(self, df_display, labels):
     """문자열 형태로 출력"""
@@ -1203,8 +1313,10 @@ def series_head_att(self, rows=5, out=None):
         else:
             df.columns = [series_name]
         
-        from IPython.display import HTML
-        return HTML(df.to_html(escape=False))
+        if IPYTHON_AVAILABLE:
+            return HTML(df.to_html(escape=False))
+        else:
+            return df.to_html(escape=False)
     
     elif out.lower() in ['str', 'string']:
         # 인덱스 최대 폭 계산
@@ -1242,6 +1354,11 @@ def series_head_att(self, rows=5, out=None):
     
     else:
         raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
+
+
+# =============================================================================
+# PANDAS EXTENSION: COLUMN SET MANAGEMENT FUNCTIONS
+# =============================================================================
 
 def _init_column_attrs(self):
     """컬럼 속성 초기화"""
@@ -1340,8 +1457,7 @@ def _set_head_ext_bulk(self, columns_name, columns_extra):
         'columns': columns_extra.copy()
     }
     
-    print(f"컬럼 세트 '{columns_name}' 설정 완료")
-    print(f"{len(columns_extra)}개 컬럼 매핑됨")
+    print(f"컬럼 세트 '{columns_name}' 설정 완료 ({len(columns_extra)}개)")
 
 def _set_head_ext_individual(self, columns_name, column_key, column_value):
     """개별 컬럼 설정 (새로운 방식)"""
@@ -1379,12 +1495,9 @@ def _set_head_ext_individual(self, columns_name, column_key, column_value):
     self.attrs['columns_extra'][columns_name]['columns'][column_key] = column_value
     
     if old_value is None:
-        print(f"컬럼 세트 '{columns_name}'에 '{column_key}' → '{column_value}' 추가")
+        print(f"'{columns_name}': '{column_key}' → '{column_value}' 추가")
     else:
-        print(f" 컬럼 세트 '{columns_name}'에서 '{column_key}': '{old_value}' → '{column_value}' 수정")
-    
-    total_mappings = len(self.attrs['columns_extra'][columns_name]['columns'])
-    print(f" 현재 '{columns_name}' 세트 총 매핑 수: {total_mappings}개")
+        print(f"'{columns_name}': '{column_key}' 수정됨")
 
 def set_head_column(self, columns_name):
     """
@@ -1431,8 +1544,7 @@ def set_head_column(self, columns_name):
     
     self._update_column_descriptions(current_set, columns_name)
     
-    print(f" 컬럼명 변경: '{current_set}' → '{columns_name}'")
-    print(f" 현재 컬럼: {list(self.columns)}")
+    print(f"컬럼명 변경: '{current_set}' → '{columns_name}'")
 
 def _convert_columns(self, current_set, target_set, target_columns):
     """컬럼명 변환 로직"""
@@ -1588,6 +1700,11 @@ def remove_head_ext(self, columns_name):
         else:
             print(f" '{name}' 컬럼 세트를 찾을 수 없습니다.")
 
+
+# =============================================================================
+# CACHE SYSTEM CORE CLASS
+# =============================================================================
+
 class DataCatch:
     _default_cache_file = "cache.json"
     _cache = None
@@ -1653,10 +1770,9 @@ class DataCatch:
         
         try:
             # 큰 데이터 저장 시 진행 상황 표시
-            import sys
             data_size = sys.getsizeof(value)
             if data_size > 10 * 1024 * 1024:  # 10MB 이상
-                print(f"큰 데이터 저장 중... (크기: {data_size / 1024 / 1024:.1f}MB)")
+                print(f"대용량 데이터 저장 중... ({data_size / 1024 / 1024:.1f}MB)")
             
             # 값을 직렬화 가능한 형태로 변환
             serializable_value = cls._make_serializable(value)
@@ -1664,7 +1780,7 @@ class DataCatch:
             cls._save_cache()
             
             if data_size > 10 * 1024 * 1024:
-                print(f"저장 완료: 키 '{key[:30]}{'...' if len(key) > 30 else ''}'")
+                print(f"저장 완료: {key[:20]}{'...' if len(key) > 20 else ''}")
             
             return True
         except Exception as e:
@@ -1689,14 +1805,68 @@ class DataCatch:
 
     @classmethod
     def _make_serializable(cls, value):
-        """값을 JSON 직렬화 가능한 형태로 변환"""
+        """값을 JSON 직렬화 가능한 형태로 변환 (NumPy 버전 호환성 개선)"""
         if isinstance(value, np.ndarray):
-            return {
-                '_type': 'numpy_array',
-                'data': value.tolist(),
-                'dtype': str(value.dtype),
-                'shape': value.shape
-            }
+            try:
+                # dtype 호환성 처리
+                dtype_str = str(value.dtype)
+                
+                # NumPy 2.0+ 호환성: datetime64, timedelta64 특별 처리
+                if 'datetime64' in dtype_str or 'timedelta64' in dtype_str:
+                    return {
+                        '_type': 'numpy_array_special',
+                        'data': value.astype(str).tolist(),
+                        'dtype': dtype_str,
+                        'shape': value.shape,
+                        'numpy_version': np.__version__
+                    }
+                
+                # 복잡한 dtype (object, structured) 처리
+                if value.dtype == np.object_ or value.dtype.names is not None:
+                    return {
+                        '_type': 'numpy_array_complex',
+                        'data': str(value),  # 안전한 문자열 변환
+                        'dtype': dtype_str,
+                        'shape': value.shape,
+                        'numpy_version': np.__version__
+                    }
+                
+                # 일반적인 경우
+                return {
+                    '_type': 'numpy_array',
+                    'data': value.tolist(),
+                    'dtype': dtype_str,
+                    'shape': value.shape,
+                    'numpy_version': np.__version__
+                }
+                
+            except Exception as e:
+                # 직렬화 실패 시 안전한 폴백
+                return {
+                    '_type': 'numpy_array_fallback',
+                    'data': str(value),
+                    'shape': value.shape,
+                    'error': str(e),
+                    'numpy_version': np.__version__
+                }
+        
+        # NumPy 스칼라 타입 호환성 개선
+        elif hasattr(value, 'dtype') and hasattr(np, 'number') and isinstance(value, np.number):
+            try:
+                # NumPy 스칼라를 Python 네이티브 타입으로 변환
+                if np.issubdtype(value.dtype, np.integer):
+                    return int(value)
+                elif np.issubdtype(value.dtype, np.floating):
+                    return float(value)
+                elif np.issubdtype(value.dtype, np.complexfloating):
+                    return complex(value)
+                elif np.issubdtype(value.dtype, np.bool_):
+                    return bool(value)
+                else:
+                    return value.item()  # 일반적인 스칼라 변환
+            except (ValueError, OverflowError):
+                return str(value)  # 변환 실패 시 문자열로 폴백
+        
         elif isinstance(value, pd.DataFrame):
             return {
                 '_type': 'pandas_dataframe',
@@ -1715,21 +1885,51 @@ class DataCatch:
             return [cls._make_serializable(item) for item in value]
         elif isinstance(value, dict):
             return {k: cls._make_serializable(v) for k, v in value.items()}
-        elif isinstance(value, (np.integer, np.floating)):
-            return float(value)
         else:
             return value
 
     @classmethod
     def _restore_value(cls, cached_value):
-        """캐시된 값을 원래 형태로 복원"""
+        """캐시된 값을 원래 형태로 복원 (NumPy 버전 호환성 개선)"""
         if isinstance(cached_value, dict) and '_type' in cached_value:
             if cached_value['_type'] == 'numpy_array':
-                return np.array(cached_value['data'], dtype=cached_value['dtype']).reshape(cached_value['shape'])
+                try:
+                    dtype_str = cached_value['dtype']
+                    
+                    # dtype 문자열 정규화 (버전 호환성)
+                    if dtype_str.startswith('<') or dtype_str.startswith('>'):
+                        # 엔디안 정보 제거
+                        dtype_str = dtype_str[1:]
+                    
+                    # 안전한 배열 생성
+                    arr = np.array(cached_value['data'], dtype=dtype_str)
+                    return arr.reshape(cached_value['shape'])
+                    
+                except (ValueError, TypeError) as e:
+                    try:
+                        # 호환 모드: dtype 추론하여 생성
+                        arr = np.array(cached_value['data'])
+                        return arr.reshape(cached_value['shape'])
+                    except Exception:
+                        return cached_value['data']
+            
+            elif cached_value['_type'] == 'numpy_array_special':
+                try:
+                    # 특별 처리된 배열 복원
+                    arr = np.array(cached_value['data'])
+                    return arr.reshape(cached_value['shape'])
+                except Exception:
+                    return cached_value['data']
+            
+            elif cached_value['_type'] in ['numpy_array_complex', 'numpy_array_fallback']:
+                # 복잡한 dtype이나 폴백된 경우 문자열 표현만 반환
+                return cached_value['data']
+            
             elif cached_value['_type'] == 'pandas_dataframe':
                 return pd.DataFrame(cached_value['data'], columns=cached_value['columns'], index=cached_value['index'])
             elif cached_value['_type'] == 'pandas_series':
                 return pd.Series(cached_value['data'], name=cached_value['name'], index=cached_value['index'])
+        
         elif isinstance(cached_value, list):
             return [cls._restore_value(item) for item in cached_value]
         elif isinstance(cached_value, dict):
@@ -1816,7 +2016,6 @@ class DataCatch:
             
             # 백업 파일을 메인 파일로 복사
             try:
-                import shutil
                 shutil.copy2(backup_file, cls._cache_file)
                 print("백업 파일에서 메인 캐시 파일을 복원했습니다.")
                 print("주의: 캐시가 이전 상태로 되돌려졌습니다. 일부 최근 데이터가 손실될 수 있습니다.")
@@ -1966,7 +2165,6 @@ class DataCatch:
             
             # 메모리 사용량 추정
             try:
-                import sys
                 cache_memory = sys.getsizeof(cls._cache)
                 for key, value in cls._cache.items():
                     cache_memory += sys.getsizeof(key) + sys.getsizeof(value)
@@ -1990,7 +2188,6 @@ class DataCatch:
         
         # 최근 수정 시간
         if os.path.exists(cls._cache_file):
-            import time
             mtime = os.path.getmtime(cls._cache_file)
             mtime_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(mtime))
             print(f"   - 최근 수정: {mtime_str}")
@@ -2057,8 +2254,6 @@ class DataCatch:
             return False
         
         try:
-            import gzip
-            import shutil
             
             original_size = os.path.getsize(cls._cache_file)
             compressed_file = cls._cache_file + ".gz"
@@ -2100,7 +2295,6 @@ class DataCatch:
         
         # 메모리 사용량이 큰 항목들 표시
         try:
-            import sys
             large_items = []
             for key, value in cls._cache.items():
                 item_size = sys.getsizeof(value)
@@ -2176,6 +2370,11 @@ def df_read_pickle(path):
         df.attrs = obj["attrs"]
     return df
 
+
+# =============================================================================
+# PANDAS COMMIT SYSTEM: CORE FUNCTIONS
+# =============================================================================
+
 def pd_commit(df, msg, commit_dir=None):
     """
     DataFrame의 현재 상태를 git처럼 커밋합니다.
@@ -2220,9 +2419,6 @@ def pd_commit(df, msg, commit_dir=None):
     _save_commit_meta(meta, commit_dir)
     print(f"✅ 커밋 완료: {commit_hash} | {dt_str} | {msg}")
     return df
-
-import pandas as pd
-
 
 
 def pd_commit_list(commit_dir=None):
