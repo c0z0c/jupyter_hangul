@@ -90,7 +90,7 @@ is_colab = False
 _COMMIT_META_FILE = "pandas_df.json"
 pd_root_base = None
 
-DEBUG_ON = True
+DEBUG_ON = False
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -189,7 +189,8 @@ def reset_matplotlib():
     """matplotlib 완전 리셋 (NumPy 호환성 개선)"""
     # matplotlib 모듈들을 sys.modules에서 제거
     
-    print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
+    if DEBUG_ON:
+        print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
 
     modules_to_remove = [mod for mod in sys.modules if mod.startswith('matplotlib')]
     for mod in modules_to_remove:
@@ -397,7 +398,6 @@ def set_pd_root_base(subdir=None):
     - subdir이 문자열이면: Colab은 /content/drive/MyDrive/subdir, Jupyter는 ./subdir
     - subdir이 '/'로 시작하면: Colab은 /content/drive/MyDrive/ + subdir, Jupyter는 . + subdir
     """
-    global pd_root_base
     if _in_colab():
         base = "/content/drive/MyDrive"
         if subdir is None or subdir == "":
@@ -421,14 +421,14 @@ def pd_root(commit_dir=None):
     commit_dir이 지정되면 해당 경로를, 없으면 pd_root_base를 반환합니다.
     """
     if commit_dir is not None:
-        return commit_dir
+        return os.path.abspath(commit_dir)
     if pd_root_base is not None:
-        return pd_root_base
+        return os.path.abspath(pd_root_base)
     # 기본값 설정
     if _in_colab():
         return "/content/drive/MyDrive"
     else:
-        return "."
+        return os.path.abspath(".")
 
 def _load_commit_meta(commit_dir=None):
     """커밋 메타데이터를 로드합니다."""
@@ -527,14 +527,27 @@ def _check_numpy_compatibility():
 # =============================================================================
 # MAIN SETUP FUNCTION
 # =============================================================================
-
+_last_setup_time = None  # 모듈 전역 변수로 선언 (출력 메시지 컨트롤)
 def setup():
     """한번에 모든 설정 완료"""
+    
+    if DEBUG_ON:
+        print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
+
+    global pd_root_base
+    global _last_setup_time
+    now = time.time()
+    is_print_log = True
+    if _last_setup_time is not None:
+        elapsed = now - _last_setup_time
+        if elapsed < 1.0:
+            is_print_log = False
+    _last_setup_time = now    
     
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
-    print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
+    # print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
     
     # NumPy 호환성 체크
     _check_numpy_compatibility()
@@ -555,15 +568,12 @@ def setup():
                     warnings.simplefilter("ignore")
                     set_pandas_extension()
                 
-                print("✅ 설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
+                if is_print_log:
+                    print("✅ 설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
                 return
-        
         print("❌ 설정 실패")
-        return
-        
     except Exception as e:
         print(f"❌ 설정 오류: {str(e)}")
-        return
 
 
 # =============================================================================
@@ -2581,3 +2591,4 @@ def pd_commit_has(idx_or_hash, commit_dir=None):
 if __name__ != "__main__":
     setup()
     set_pd_root_base()
+    print('pd commit 저장 경로 =', pd_root())
