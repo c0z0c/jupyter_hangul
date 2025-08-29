@@ -149,7 +149,7 @@ def _colab_font_reinstall():
         pass
 
 def reset_matplotlib():
-    """matplotlib 완전 리셋"""
+    """matplotlib 완전 리셋 (NumPy 호환성 개선)"""
     # matplotlib 모듈들을 sys.modules에서 제거
     modules_to_remove = [mod for mod in sys.modules if mod.startswith('matplotlib')]
     for mod in modules_to_remove:
@@ -172,17 +172,13 @@ def reset_matplotlib():
     
     # 환경별 폰트 설정
     if _in_colab():
-        # Colab 환경: 시스템에 설치된 나눔 폰트 사용
         plt.rcParams['font.family'] = 'NanumBarunGothic'
     else:
-        # 로컬 환경: 다운로드한 폰트 파일 사용
         global font_path
         if font_path and os.path.exists(font_path):
-            # 폰트 파일을 시스템에 등록
             fm.fontManager.addfont(font_path)
             plt.rcParams['font.family'] = 'NanumGothic'
         else:
-            # 폰트 파일이 없으면 시스템 한글 폰트 시도
             available_fonts = [f.name for f in fm.fontManager.ttflist]
             korean_fonts = ['Malgun Gothic', 'AppleGothic', 'NanumGothic', 'Noto Sans CJK KR']
             
@@ -195,9 +191,19 @@ def reset_matplotlib():
                 print("⚠️ 한글 폰트를 찾을 수 없습니다. font_download()를 먼저 실행하세요.")
     
     plt.rcParams['axes.unicode_minus'] = False
-    plt.rcParams['font.size'] = 10  # 기본 폰트 사이즈 10으로 설정    
+    plt.rcParams['font.size'] = 10
     
-    print("✅ matplotlib 한글 폰트 설정 완료")
+    # IPython 환경에서 전역 등록 (Jupyter/Colab 호환성 개선)
+    try:
+        import IPython
+        ipy = IPython.get_ipython()
+        if ipy is not None:
+            ipy.user_ns["plt"] = plt
+        else:
+            globals()["plt"] = plt
+    except Exception:
+        globals()["plt"] = plt
+    
     return plt
 
 def load_font():
@@ -436,6 +442,21 @@ def set_pandas_extension():
     setattr(pd.DataFrame, "commit_rm", classmethod(_df_commit_rm))
     setattr(pd.DataFrame, "commit_has", classmethod(_df_commit_has))
 
+def _check_numpy_compatibility():
+    """NumPy 버전 호환성 체크"""
+    try:
+        major_version = int(np.__version__.split('.')[0])
+        minor_version = int(np.__version__.split('.')[1])
+        
+        if major_version >= 2:
+            print(f"ℹ️ NumPy {np.__version__} (v2.x+): 호환성 모드 적용됨")
+        elif major_version == 1 and minor_version < 20:
+            print(f"⚠️ NumPy {np.__version__}: 구 버전 감지, 일부 기능 제한 가능")
+        
+        return True
+    except Exception:
+        return False
+
 def setup():
     """한번에 모든 설정 완료"""
     
@@ -443,6 +464,9 @@ def setup():
     warnings.filterwarnings(action='ignore')
     
     print("🚀 Jupyter/Colab 한글 환경 설정 중... (helper v" + __version__ + ")")
+    
+    # NumPy 호환성 체크
+    _check_numpy_compatibility()
     
     try:
         
@@ -461,8 +485,7 @@ def setup():
                     warnings.simplefilter("ignore")
                     set_pandas_extension()
                 
-                print("✅ 한글 폰트 및 pandas 확장 기능 설정 완료")
-                print("🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능")
+                print("✅ 설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
                 return
         
         print("❌ 설정 실패")
