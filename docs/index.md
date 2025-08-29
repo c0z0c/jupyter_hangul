@@ -192,13 +192,21 @@ Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기�
 
 ```python
 # 모듈 다운로드 및 import (한 번에 모든 설정 완료)
-from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
 import helper_c0z0c_dev as helper
 
 # 출력 예시:
 # 🚀 Jupyter/Colab 한글 환경 설정 중... (helper v2.4.0)
 # ✅ 한글 폰트 및 pandas 확장 기능 설정 완료
 # 🎉 사용 가능: 한글 폰트, CSV 읽기, DataFrame.head_att(), 캐시 기능
+```
+
+### <span class="emoji">🧪</span> 베타 버전 테스트 (최신 기능 미리 체험)
+
+```python
+# 베타 버전 - 최신 기능 포함 (실험적 기능 포함)
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+import helper_c0z0c_dev as helper
 ```
 
 ## <span class="emoji">💡</span> 주요 기능

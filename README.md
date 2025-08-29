@@ -5,16 +5,23 @@
 ## ⚡ 한 줄 설치
 
 ```python
-from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/master/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
 import helper_c0z0c_dev as helper # 모든 설정 완료!
 ```
 
-## � 주요 기능
+### 🧪 베타 버전 테스트 (최신 기능 미리 체험)
 
-- 🎨 **한글 폰트 자동 설정** (matplotlib)
-- 📊 **pandas 확장 기능** (한글 컬럼 설명)
-- 💾 **캐시 시스템** (ML 모델/데이터 저장)
-- 🌐 **크로스 플랫폼** (Windows, Ubuntu, Mac)
+```python
+from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
+import helper_c0z0c_dev as helper # 베타 버전 - 최신 기능 포함
+```
+
+## 🎯 주요 기능
+
+- 🎨 **한글 폰트 자동 설정** (matplotlib 완전 리셋 시스템)
+- 📊 **pandas 확장 기능** (한글 컬럼 설명 & 세트 관리)
+- 💾 **캐시 시스템** (ML 모델/데이터 저장, 40개 테스트 검증)
+- 🌐 **크로스 플랫폼** (Windows, Ubuntu, Mac 100% 호환)
 
 ## 📚 문서
 

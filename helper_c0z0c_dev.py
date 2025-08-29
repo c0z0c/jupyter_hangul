@@ -392,6 +392,10 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
 
 def dir_start(obj, cmd):
     """라이브러리 도움말을 검색합니다."""
+    print('def dir_start(obj, cmd):')
+    print('  for c in [att for att in dir(obj) if att.startswith(cmd)]:')
+    print('    print(f"{c}")')
+    print()
     for c in [att for att in dir(obj) if att.startswith(cmd)]:
         print(f"{c}")
 
