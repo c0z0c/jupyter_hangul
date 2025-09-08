@@ -1,24 +1,24 @@
 """
 Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
 
- 기본 사용법:
-    import helper.c0z0c.dev as helper
+🚀 기본 사용법:
+    import helper_c0z0c_dev as helper
     helper.setup()  # 한번에 모든 설정 완료
 
-개별 실행:
+📂 개별 실행:
     helper.font_download()      # 폰트 다운로드
     helper.load_font()          # 폰트 로딩
     helper.set_pandas_extension()  # pandas 확장 기능
 
-파일 읽기:
+📊 파일 읽기:
     df = helper.pd_read_csv("파일명.csv")          # 문자열 경로 (자동 변환)
     df = helper.pd_read_csv(file_obj, encoding='utf-8')  # 파일 객체/URL 등
 
-유틸리티:
+🔧 유틸리티:
     helper.dir_start(객체, "접두사")  # 메서드 검색
     df.head_att()  # 한글 컬럼 설명 출력
 
-� 캐시 기능:
+💾 캐시 기능:
     key = helper.cache_key("model", params, random_state=42)  # 키 생성
     helper.cache_save(key, model)                           # 모델 저장
     model = helper.cache_load(key)                          # 모델 로드
@@ -26,34 +26,52 @@ Jupyter/Colab 한글 폰트 및 pandas 확장 모듈
     helper.cache_info()                                     # 캐시 정보
     helper.cache_clear()                                    # 캐시 초기화
 
-🆕 v2.2.0 개선사항:
-    - 재부팅 없는 안정적 한글 폰트 로딩
-    - 간소화된 출력 메시지 (3-4줄)
-    - 문제 발생 시 helper.setup() 다시 실행하면 해결
+📈 pandas commit 시스템:
+    df.commit("데이터 전처리 완료")              # DataFrame 상태 저장
+    df_list = pd.DataFrame.commit_list()        # 커밋 목록 조회
+    df_restored = pd.DataFrame.checkout(0)      # 특정 커밋으로 복원
+    pd.DataFrame.commit_rm("메시지")            # 커밋 삭제
+
+🌐 AI Hub 데이터셋 다운로드:
+    from helper_c0z0c_dev import AIHubShell
+    aihub = AIHubShell()
+    aihub.list_search(datasetname='검색어')     # 데이터셋 검색
+    aihub.download_dataset(apikey, datasetkey)  # 데이터셋 다운로드
+
+🆕 v2.5.0 개선사항:
+    - AI Hub 데이터셋 다운로드 기능 추가
 
 작성자: 김명환
-날짜: 2025.07.22
-버전: 2.2.0
+날짜: 2025.09.08
+버전: 2.5.0
+라이센스: MIT
 """
 
 # =============================================================================
 # IMPORTS
 # =============================================================================
 
+# =============================================================================
+# IMPORTS
+# =============================================================================
+
 # Standard library imports
-import datetime
-import gzip
-import hashlib
-import json
 import os
-import pickle
-import shutil
-import subprocess
 import sys
 import time
-import urllib.request
+import json
+import gzip
+import shutil
+import pickle
+import hashlib
 import warnings
-import datetime
+import subprocess
+import urllib.request
+import signal
+import re
+from pathlib import Path
+from datetime import datetime
+import tarfile
 
 # Third-party imports
 import matplotlib.font_manager
@@ -81,7 +99,7 @@ except ImportError:
 # CONSTANTS AND GLOBAL VARIABLES
 # =============================================================================
 
-__version__ = "2.4.0"
+__version__ = "2.5.0"
 
 # Font management
 __font_path = ""
@@ -2609,6 +2627,230 @@ def pd_commit_has(idx_or_hash, commit_dir=None):
             if os.path.exists(os.path.join(save_dir, fname)):
                 return True
     return False
+
+#########################################################################################################
+class AIHubShell:
+    def __init__(self, debug=False, download_dir=None):
+        self.BASE_URL = "https://api.aihub.or.kr"
+        self.LOGIN_URL = f"{self.BASE_URL}/api/keyValidate.do"
+        self.BASE_DOWNLOAD_URL = f"{self.BASE_URL}/down/0.5"
+        self.MANUAL_URL = f"{self.BASE_URL}/info/api.do"
+        self.BASE_FILETREE_URL = f"{self.BASE_URL}/info"
+        self.DATASET_URL = f"{self.BASE_URL}/info/dataset.do"
+        self.debug = debug
+        self.download_dir = download_dir if download_dir else "."
+                
+    def help(self):
+        """사용법 출력"""
+        print("AIHubShell 클래스 사용법")
+        print("- 인스턴스 생성: AIHubShell(debug=False, download_dir=None)")
+        print("  * debug: True로 설정하면 API 원본 응답 등 상세 로그 출력")
+        print("  * download_dir: 다운로드 경로 지정 (기본값: 현재 경로)")
+        print("- 데이터셋 목록 조회: list_info() 또는 list_search(datasetname='검색어')")
+        print("- 특정 데이터셋 트리 조회: list_info(datasetkey=숫자)")
+        print("- 특정 이름 포함 데이터셋 트리 조회: list_info(datasetname='검색어')")
+        print("- 데이터셋 다운로드: download_dataset(apikey, datasetkey, filekeys='all')")
+        print()
+        print("예시:")
+        print("  aihub = AIHubShell(debug=True, download_dir='./data')")
+        print("  aihub.list_info()")
+        print("  aihub.list_search(datasetname='경구약제')")
+        print("  aihub.list_info(datasetkey=576)")
+        print("  aihub.download_dataset(apikey='API키', datasetkey=576, filekeys='66065')")
+        print()
+        print("자세한 API 설명은 aihub.print_usage() 또는 공식 문서 참고")
+                        
+    def print_usage(self):
+        """사용법 출력"""
+        try:
+            response = requests.get(self.MANUAL_URL)
+            manual = response.text
+            
+            if self.debug:
+                print("API 원본 응답:")
+                print(manual)            
+            
+            # JSON 파싱하여 데이터 추출
+            try:
+                manual = re.sub(r'("FRST_RGST_PNTTM":)([0-9\- :\.]+)', r'\1"\2"', manual)
+                manual_data = json.loads(manual)
+                if self.debug:
+                    print("JSON 파싱 성공")
+                    
+                if 'result' in manual_data and len(manual_data['result']) > 0:
+                    print(manual_data['result'][0].get('SJ', ''))
+                    print()
+                    print("ENGL_CMGG\t KOREAN_CMGG\t\t\t DETAIL_CN")
+                    print("-" * 80)
+                    
+                    for item in manual_data['result']:
+                        engl = item.get('ENGL_CMGG', '')
+                        korean = item.get('KOREAN_CMGG', '')
+                        detail = item.get('DETAIL_CN', '').replace('\\n', '\n').replace('\\t', '\t')
+                        print(f"{engl:<10}\t {korean:<15}\t|\t {detail}\n")
+            except json.JSONDecodeError:
+                if self.debug:
+                    print("JSON 파싱 오류:", e)
+                else:
+                    print("API 응답 파싱 오류")
+        except requests.RequestException as e:
+            print(f"API 요청 오류: {e}")
+    
+    def merge_parts(self, target_dir):
+        """part 파일들을 병합"""
+        target_path = Path(target_dir)
+        part_files = list(target_path.glob("*.part*"))
+        
+        if not part_files:
+            return
+            
+        # prefix별로 그룹화
+        prefixes = {}
+        for part_file in part_files:
+            match = re.match(r'(.+)\.part(\d+)$', part_file.name)
+            if match:
+                prefix = match.group(1)
+                part_num = int(match.group(2))
+                if prefix not in prefixes:
+                    prefixes[prefix] = []
+                prefixes[prefix].append((part_num, part_file))
+        
+        # 각 prefix별로 병합
+        for prefix, parts in prefixes.items():
+            print(f"Merging {prefix} in {target_dir}")
+            parts.sort(key=lambda x: x[0])  # part 번호로 정렬
+            
+            output_path = target_path / prefix
+            with open(output_path, 'wb') as output_file:
+                for _, part_file in parts:
+                    with open(part_file, 'rb') as input_file:
+                        shutil.copyfileobj(input_file, output_file)
+            
+            # part 파일들 삭제
+            for _, part_file in parts:
+                part_file.unlink()
+                
+    def merge_all_parts(self, base_path="."):
+        """모든 하위 폴더의 part 파일들을 병합"""
+        print("병합 중입니다...")
+        for root, dirs, files in os.walk(base_path):
+            part_files = [f for f in files if '.part' in f]
+            if part_files:
+                self.merge_parts(root)
+        print("병합이 완료되었습니다.")
+    
+    def download_dataset(self, apikey, datasetkey, filekeys="all"):
+        """데이터셋 다운로드"""
+        download_path = Path(self.download_dir)
+        download_tar_path = download_path / "download.tar"
+
+        # 기존 download.tar 백업
+        if download_tar_path.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_name = download_path / f"download_{timestamp}.tar"
+            shutil.move(str(download_tar_path), str(backup_name))
+            print(f"msg : download.tar 파일이 존재하여 {backup_name}로 백업하였습니다.")
+
+        def cleanup_handler(signum, frame):
+            if download_tar_path.exists():
+                download_tar_path.unlink()
+                print("\n다운로드가 중단되었습니다.")
+            sys.exit(1)
+
+        signal.signal(signal.SIGINT, cleanup_handler)
+
+        download_url = f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do"
+        headers = {"apikey": apikey}
+        params = {"fileSn": filekeys}
+
+        try:
+            print("다운로드 시작...")
+            os.makedirs(download_path, exist_ok=True)
+            response = requests.get(download_url, headers=headers, params=params, stream=True)
+
+            if response.status_code == 200:
+                print(f"Request successful with HTTP status {response.status_code}.")
+                with open(download_tar_path, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                print("Download successful.")
+
+                # tar 파일 해제
+                print("압축 해제 중...")
+                with tarfile.open(download_tar_path, "r") as tar:
+                    tar.extractall(path=download_path)
+
+                # part 파일들 병합
+                self.merge_all_parts(download_path)
+
+                # download.tar 삭제
+                download_tar_path.unlink()
+                print("다운로드 완료!")
+            else:
+                print(f"Download failed with HTTP status {response.status_code}.")
+                print("Error msg:")
+                print(response.text)
+                if download_tar_path.exists():
+                    download_tar_path.unlink()
+        except requests.RequestException as e:
+            print(f"다운로드 실패: {e}")
+            if download_tar_path.exists():
+                download_tar_path.unlink()
+    
+    # filepath: [경구약제_이미지_데이터.ipynb](http://_vscodecontentref_/0)
+    def list_info(self, datasetkey=None, datasetname=None):
+        """데이터셋 목록 또는 파일 트리 조회"""
+        if datasetkey:
+            filetree_url = f"{self.BASE_FILETREE_URL}/{datasetkey}.do"
+            print("Fetching file tree structure...")
+            try:
+                response = requests.get(filetree_url)
+                # 인코딩 자동 감지
+                response.encoding = response.apparent_encoding
+                print(response.text)
+            except requests.RequestException as e:
+                print(f"API 요청 오류: {e}")
+        else:
+            print("Fetching dataset information...")
+            try:
+                response = requests.get(self.DATASET_URL)
+                response.encoding = 'utf-8'
+                #response.encoding = 'euc-kr'
+                print(response.text)
+            except requests.RequestException as e:
+                print(f"API 요청 오류: {e}")
+
+
+    def list_search(self, datasetname=None, tree=False):
+        """
+        데이터셋 목록 또는 특정 이름이 포함된 데이터셋의 파일 트리 조회
+        datasetname: 검색할 데이터셋 이름 (부분 일치)
+        tree: True이면 해당 데이터셋의 파일 트리도 조회        
+        """
+        print("Fetching dataset information...")
+        try:
+            response = requests.get(self.DATASET_URL)
+            response.encoding = 'utf-8'
+            text = response.text
+            if datasetname:
+                # datasetname이 포함된 부분만 출력
+                lines = text.splitlines()
+                for line in lines:
+                    if datasetname in line:
+                        #print(line)
+                        # 576, 경구약제 이미지 데이터
+                        num, name = line.split(',', 1)
+                        # 해당 데이터셋의 파일 트리 조회
+                        if tree:
+                            self.list_info(datasetkey=int(num.strip()))
+                        else:
+                            print(line)
+            else:
+                print(text)
+        except requests.RequestException as e:
+            print(f"API 요청 오류: {e}")
+            
+#########################################################################################################
 
 # 모듈 import 시 자동으로 setup 실행
 if __name__ != "__main__":
