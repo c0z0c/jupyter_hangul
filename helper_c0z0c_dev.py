@@ -562,7 +562,7 @@ def setup():
     if __DEBUG_ON:
         print(f"✅ 한글 폰트 설정 중... (helper v{__version__})")
         if __last_setup_time is not None:
-            print(f"   - __last_setup_time : {datetime.datetime.fromtimestamp(__last_setup_time).strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"   - __last_setup_time : {datetime.fromtimestamp(__last_setup_time).strftime('%Y-%m-%d %H:%M:%S')}")
         else:
             print(f"   - __last_setup_time : None")
 
@@ -580,8 +580,8 @@ def setup():
         __last_setup_time = now
     
     if __DEBUG_ON:
-        print(f"   - now : {datetime.datetime.fromtimestamp(now).strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"   - __last_setup_time : {datetime.datetime.fromtimestamp(__last_setup_time).strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   - now : {datetime.fromtimestamp(now).strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   - __last_setup_time : {datetime.fromtimestamp(__last_setup_time).strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"   - __is_setup_print_log : {__is_setup_print_log}")
     
     
@@ -2435,7 +2435,7 @@ def pd_commit(df, msg, commit_dir=None):
     """
     if df is None or not isinstance(df, pd.DataFrame):
         raise ValueError("df 인자가 None이거나 유효한 DataFrame이 아닙니다.")
-    dt = datetime.datetime.now()
+    dt = datetime.now()
     dt_str = dt.strftime("%Y-%m-%d %H:%M:%S")  # ISO8601 포맷
     commit_hash = _generate_commit_hash(dt, msg)
     fname = f"{commit_hash}.pkl_helper"
@@ -2630,35 +2630,86 @@ def pd_commit_has(idx_or_hash, commit_dir=None):
 
 #########################################################################################################
 class AIHubShell:
-    def __init__(self, debug=False, download_dir=None):
+    def __init__(self, DEBUG=False, download_dir=None):
         self.BASE_URL = "https://api.aihub.or.kr"
         self.LOGIN_URL = f"{self.BASE_URL}/api/keyValidate.do"
         self.BASE_DOWNLOAD_URL = f"{self.BASE_URL}/down/0.5"
         self.MANUAL_URL = f"{self.BASE_URL}/info/api.do"
         self.BASE_FILETREE_URL = f"{self.BASE_URL}/info"
         self.DATASET_URL = f"{self.BASE_URL}/info/dataset.do"
-        self.debug = debug
+        self.DEBUG = DEBUG
         self.download_dir = download_dir if download_dir else "."
                 
     def help(self):
-        """사용법 출력"""
-        print("AIHubShell 클래스 사용법")
-        print("- 인스턴스 생성: AIHubShell(debug=False, download_dir=None)")
-        print("  * debug: True로 설정하면 API 원본 응답 등 상세 로그 출력")
-        print("  * download_dir: 다운로드 경로 지정 (기본값: 현재 경로)")
-        print("- 데이터셋 목록 조회: list_info() 또는 list_search(datasetname='검색어')")
-        print("- 특정 데이터셋 트리 조회: list_info(datasetkey=숫자)")
-        print("- 특정 이름 포함 데이터셋 트리 조회: list_info(datasetname='검색어')")
-        print("- 데이터셋 다운로드: download_dataset(apikey, datasetkey, filekeys='all')")
+        """AIHubShell 클래스 사용법 출력"""
+        print("=" * 80)
+        print("                        AIHubShell 클래스 사용 가이드")
+        print("=" * 80)
         print()
-        print("예시:")
-        print("  aihub = AIHubShell(debug=True, download_dir='./data')")
-        print("  aihub.list_info()")
-        print("  aihub.list_search(datasetname='경구약제')")
+        
+        print("🔧 초기화")
+        print("  AIHubShell(DEBUG=False, download_dir=None)")
+        print("    DEBUG: True로 설정하면 상세 로그 출력")
+        print("    download_dir: 다운로드 경로 지정 (기본값: 현재 경로)")
+        print()
+        
+        print("📋 데이터셋 조회")
+        print("  .dataset_info()                    # 전체 데이터셋 목록 조회")
+        print("  .dataset_search('검색어')          # 특정 이름 포함 데이터셋 검색")
+        print("  .dataset_search('검색어', tree=True) # 검색 + 파일 트리 조회")
+        print("  .list_info(datasetkey=576)         # 특정 데이터셋의 파일 목록")
+        print("  .json_info(datasetkey=576)         # JSON 형태로 파일 구조 반환")
+        print()
+        
+        print("💾 다운로드")
+        print("  .download_dataset(apikey, datasetkey, filekeys='all')")
+        print("    apikey: AI Hub API 키")
+        print("    datasetkey: 데이터셋 번호")
+        print("    filekeys: 파일키 ('all' 또는 '66065,66083' 형태)")
+        print("    overwrite: 기존 파일 덮어쓰기 여부 (기본값: False)")
+        print()
+        
+        print("📖 기타 기능")
+        print("  .print_usage()                     # AI Hub API 상세 사용법")
+        print("  .help()                            # 이 도움말")
+        print()
+        
+        print("💡 사용 예시")
+        print("  # 1. 인스턴스 생성")
+        print("  aihub = AIHubShell(DEBUG=True, download_dir='./data')")
+        print()
+        print("  # 2. 경구약제 데이터셋 검색")
+        print("  aihub.dataset_search('경구약제')")
+        print()
+        print("  # 3. 데이터셋 576의 파일 목록 확인")
         print("  aihub.list_info(datasetkey=576)")
-        print("  aihub.download_dataset(apikey='API키', datasetkey=576, filekeys='66065')")
         print()
-        print("자세한 API 설명은 aihub.print_usage() 또는 공식 문서 참고")
+        print("  # 4. 특정 파일들만 다운로드")
+        print("  aihub.download_dataset(")
+        print("      apikey='YOUR_API_KEY',")
+        print("      datasetkey=576,")
+        print("      filekeys='66065,66083'")
+        print("  )")
+        print()
+        print("  # 5. 전체 데이터셋 다운로드")
+        print("  aihub.download_dataset(")
+        print("      apikey='YOUR_API_KEY',")
+        print("      datasetkey=576,")
+        print("      filekeys='all'")
+        print("  )")
+        print()
+        
+        print("⚠️  주의사항")
+        print("  - API 키는 AI Hub에서 발급받아야 합니다")
+        print("  - 대용량 파일 다운로드 시 충분한 저장 공간을 확보하세요")
+        print("  - overwrite=False일 때 기존 파일은 자동으로 건너뜁니다")
+        print("  - 네트워크 상태에 따라 다운로드 시간이 달라질 수 있습니다")
+        print()
+        
+        print("🔍 추가 정보")
+        print("  AI Hub API 공식 문서: https://aihub.or.kr")
+        print("  문제 발생 시 DEBUG=True로 설정하여 상세 로그를 확인하세요")
+        print("=" * 80)
                         
     def print_usage(self):
         """사용법 출력"""
@@ -2666,7 +2717,7 @@ class AIHubShell:
             response = requests.get(self.MANUAL_URL)
             manual = response.text
             
-            if self.debug:
+            if self.DEBUG:
                 print("API 원본 응답:")
                 print(manual)            
             
@@ -2674,7 +2725,7 @@ class AIHubShell:
             try:
                 manual = re.sub(r'("FRST_RGST_PNTTM":)([0-9\- :\.]+)', r'\1"\2"', manual)
                 manual_data = json.loads(manual)
-                if self.debug:
+                if self.DEBUG:
                     print("JSON 파싱 성공")
                     
                 if 'result' in manual_data and len(manual_data['result']) > 0:
@@ -2689,14 +2740,14 @@ class AIHubShell:
                         detail = item.get('DETAIL_CN', '').replace('\\n', '\n').replace('\\t', '\t')
                         print(f"{engl:<10}\t {korean:<15}\t|\t {detail}\n")
             except json.JSONDecodeError:
-                if self.debug:
+                if self.DEBUG:
                     print("JSON 파싱 오류:", e)
                 else:
                     print("API 응답 파싱 오류")
         except requests.RequestException as e:
             print(f"API 요청 오류: {e}")
     
-    def merge_parts(self, target_dir):
+    def _merge_parts(self, target_dir):
         """part 파일들을 병합"""
         target_path = Path(target_dir)
         part_files = list(target_path.glob("*.part*"))
@@ -2730,75 +2781,203 @@ class AIHubShell:
             for _, part_file in parts:
                 part_file.unlink()
                 
-    def merge_all_parts(self, base_path="."):
+    def _merge_parts(self, base_path="."):
         """모든 하위 폴더의 part 파일들을 병합"""
-        print("병합 중입니다...")
+        if self.DEBUG:
+            print("병합 중입니다...")
         for root, dirs, files in os.walk(base_path):
             part_files = [f for f in files if '.part' in f]
             if part_files:
-                self.merge_parts(root)
-        print("병합이 완료되었습니다.")
+                self._merge_parts(root)
+        if self.DEBUG:
+            print("병합이 완료되었습니다.")
     
-    def download_dataset(self, apikey, datasetkey, filekeys="all"):
-        """데이터셋 다운로드"""
+    def download_dataset(self, apikey, datasetkey, filekeys="all", overwrite=False):
+        """데이터셋 다운로드 (옵션: 덮어쓰기)"""
+        def _parse_size(size_str):
+            """'92 GB', '8 MB' 등 문자열을 바이트 단위로 변환"""
+            size_str = size_str.strip().upper()
+            if 'GB' in size_str:
+                return float(size_str.replace('GB', '').strip()) * 1024**3
+            elif 'MB' in size_str:
+                return float(size_str.replace('MB', '').strip()) * 1024**2
+            elif 'KB' in size_str:
+                return float(size_str.replace('KB', '').strip()) * 1024
+            elif 'B' in size_str:
+                return float(size_str.replace('B', '').strip())
+            return 0
+        
         download_path = Path(self.download_dir)
         download_tar_path = download_path / "download.tar"
+        
+        download_list = self.list_info(datasetkey=datasetkey, filekeys=filekeys, print_out=False)
+        
+        # 이미 존재하는 파일은 제외
+        keys_to_download = []
+        for key, info in download_list.items():
+            extracted_file_path = os.path.join(self.download_dir, info.path)
+            if not overwrite and os.path.exists(extracted_file_path):
+                print(f"이미 압축 해제된 파일 발견: {extracted_file_path}")
+                if self.DEBUG:
+                    print("다운로드를 생략합니다.")
+                continue
+            keys_to_download.append(str(key))
 
-        # 기존 download.tar 백업
-        if download_tar_path.exists():
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_name = download_path / f"download_{timestamp}.tar"
-            shutil.move(str(download_tar_path), str(backup_name))
-            print(f"msg : download.tar 파일이 존재하여 {backup_name}로 백업하였습니다.")
+        # 다운로드할 filekeys가 없으면 종료
+        if not keys_to_download:
+            print("모든 파일이 이미 존재합니다. 다운로드를 종료합니다.")
+            return
 
-        def cleanup_handler(signum, frame):
-            if download_tar_path.exists():
-                download_tar_path.unlink()
-                print("\n다운로드가 중단되었습니다.")
-            sys.exit(1)
-
-        signal.signal(signal.SIGINT, cleanup_handler)
-
-        download_url = f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do"
+        # 헤더와 파라미터 기본 설정
         headers = {"apikey": apikey}
-        params = {"fileSn": filekeys}
+        params = {"fileSn": ",".join(keys_to_download)}
+        
+        mode = "wb"
+        existing_size = 0
+        response_head = requests.head(f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do", headers=headers, params=params)
+        if "content-length" in response_head.headers:
+            total_size = int(response_head.headers.get('content-length', 0))
+        else:
+            total_size = 0
+            if self.DEBUG:
+                print("content-length 헤더가 없습니다. 전체 크기 알 수 없음.")
+                print("HEAD 응답 헤더:", response_head.headers)
 
-        try:
+        if total_size == 0:
+            total_size = int(sum(_parse_size(info.size) for info in download_list.values()))
+            if self.DEBUG:
+                print(f"download_list 기반 추정 total_size: {total_size / (1024**3):.2f} GB")
+                
+        # 실제 다운로드
+        if self.DEBUG:
             print("다운로드 시작...")
-            os.makedirs(download_path, exist_ok=True)
-            response = requests.get(download_url, headers=headers, params=params, stream=True)
+            
+        os.makedirs(download_path, exist_ok=True)
+        response = requests.get(
+            f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do",
+            headers=headers,
+            params=params,
+            stream=True
+        )
 
-            if response.status_code == 200:
-                print(f"Request successful with HTTP status {response.status_code}.")
-                with open(download_tar_path, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                print("Download successful.")
-
-                # tar 파일 해제
+        if response.status_code in [200, 206]:
+            
+            with open(download_tar_path, mode) as f, tqdm(
+                total=total_size, 
+                unit='B', 
+                unit_scale=True, 
+                desc="Downloading", 
+                mininterval=3.0,  # 3초마다 갱신
+                initial=(existing_size if mode == "ab" else 0)
+            ) as pbar:
+                update_count = 10
+                downloaded = existing_size if mode == "ab" else 0
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+                    f.flush()
+                    downloaded += len(chunk)
+                    pbar.update(len(chunk))
+                    if update_count <= 0:
+                        pbar.set_postfix_str(f"{downloaded / (1024**2):.2f}MB / {total_size / (1024**2):.2f}MB")
+                        update_count = 10
+                    update_count -= 1
+            
+            if self.DEBUG:
                 print("압축 해제 중...")
-                with tarfile.open(download_tar_path, "r") as tar:
-                    tar.extractall(path=download_path)
-
-                # part 파일들 병합
-                self.merge_all_parts(download_path)
-
-                # download.tar 삭제
-                download_tar_path.unlink()
-                print("다운로드 완료!")
-            else:
-                print(f"Download failed with HTTP status {response.status_code}.")
-                print("Error msg:")
-                print(response.text)
-                if download_tar_path.exists():
-                    download_tar_path.unlink()
-        except requests.RequestException as e:
-            print(f"다운로드 실패: {e}")
+            with tarfile.open(download_tar_path, "r") as tar:
+                tar.extractall(path=download_path)
+            self._merge_parts(download_path)
+            download_tar_path.unlink()
+            
+            print("다운로드 완료!")
+        else:
+            print(f"Download failed with HTTP status {response.status_code}.")
+            print("Error msg:")
+            print(response.text)
             if download_tar_path.exists():
-                download_tar_path.unlink()
-    
+                download_tar_path.unlink()                
+                
+    def list_info(self, datasetkey=None, filekeys="all", print_out=True):
+        """데이터셋 파일 정보 조회 (filekeys, 파일명, 사이즈 출력 및 딕셔너리 반환)"""
+        resjson = self.json_info(datasetkey=datasetkey)
+        
+        # 파일 정보를 담을 딕셔너리
+        file_info_dict = {}
+        
+        def extract_files(structure):
+            """재귀적으로 파일 정보 추출"""
+            for item in structure:
+                if item["type"] == "file" and "filekey" in item:
+                    filekey = int(item["filekey"])
+                    file_info_dict[filekey] = {
+                        "filekey": item["filekey"],
+                        "filename": item["name"],
+                        "size": item["size"],
+                        "path": item["path"],
+                        "deep": item["deep"]
+                    }
+                elif item["type"] == "directory" and "children" in item:
+                    extract_files(item["children"])
+        
+        # JSON 구조에서 파일 정보 추출
+        extract_files(resjson["structure"])
+        
+        # filekeys 처리
+        if filekeys == "all":
+            filtered_files = file_info_dict
+        else:
+            # 쉼표로 구분된 filekeys 파싱
+            requested_keys = []
+            for key in filekeys.split(','):
+                try:
+                    requested_keys.append(int(key.strip()))
+                except ValueError:
+                    continue
+            
+            # 요청된 filekey만 필터링
+            filtered_files = {k: v for k, v in file_info_dict.items() if k in requested_keys}
+        
+        # 출력
+        if print_out:
+            print(f"Dataset: {datasetkey}")
+            print("=" * 80)
+            print(f"{'FileKey':<8} {'Filename':<30} {'Size':<10} {'Path'}")
+            print("-" * 80)
+            
+            for filekey, info in sorted(filtered_files.items()):
+                print(f"{info['filekey']:<8} {info['filename']:<30} {info['size']:<10} {info['path']}")
+            
+            print(f"\n총 {len(filtered_files)}개 파일")
+        
+        # 딕셔너리 반환 (FileInfo 객체 형태로)
+        class FileInfo:
+            def __init__(self, filekey, filename, size, path, deep):
+                self.filekey = filekey
+                self.filename = filename
+                self.size = size
+                self.path = path
+                self.deep = deep
+            
+            def __str__(self):
+                return f"FileInfo(filekey={self.filekey}, filename='{self.filename}', size='{self.size}' , path='{self.path}', deep={self.deep})"
+            
+            def __repr__(self):
+                return self.__str__()
+        
+        result_dict = {}
+        for filekey, info in filtered_files.items():
+            result_dict[filekey] = FileInfo(
+                filekey=info["filekey"],
+                filename=info["filename"],
+                size=info["size"],
+                path=info["path"],
+                deep=info["deep"]
+            )
+        
+        return result_dict
+        
     # filepath: [경구약제_이미지_데이터.ipynb](http://_vscodecontentref_/0)
-    def list_info(self, datasetkey=None, datasetname=None):
+    def dataset_info(self, datasetkey=None, datasetname=None):
         """데이터셋 목록 또는 파일 트리 조회"""
         if datasetkey:
             filetree_url = f"{self.BASE_FILETREE_URL}/{datasetkey}.do"
@@ -2820,8 +2999,7 @@ class AIHubShell:
             except requests.RequestException as e:
                 print(f"API 요청 오류: {e}")
 
-
-    def list_search(self, datasetname=None, tree=False):
+    def dataset_search(self, datasetname=None, tree=False):
         """
         데이터셋 목록 또는 특정 이름이 포함된 데이터셋의 파일 트리 조회
         datasetname: 검색할 데이터셋 이름 (부분 일치)
@@ -2842,13 +3020,155 @@ class AIHubShell:
                         num, name = line.split(',', 1)
                         # 해당 데이터셋의 파일 트리 조회
                         if tree:
-                            self.list_info(datasetkey=int(num.strip()))
+                            self.dataset_info(datasetkey=num.strip())
                         else:
                             print(line)
             else:
                 print(text)
         except requests.RequestException as e:
             print(f"API 요청 오류: {e}")
+
+    def _get_depth_from_star_count(self, star_count, depth_mapping):
+        """star_count 값을 깊이(deep)로 변환"""
+        if star_count not in depth_mapping:
+            # 새로운 star_count 값이면 배열에 추가
+            depth_mapping.append(star_count)
+            # 오름차순 정렬
+            depth_mapping.sort()
+        
+        # 배열에서의 인덱스가 깊이
+        return depth_mapping.index(star_count)
+
+    def _json_line(self, line, json_obj, depth_mapping, path_stack, weight=0, deep=0):
+        """파일 트리의 한 줄을 JSON 구조에 맞게 파싱하여 추가"""
+        # 트리 구조 기호를 모두 *로 변경
+        line = line.replace("├─", "└─")
+        line = line.replace("│ ", "└─")
+        while "    └─" in line:
+            line = line.replace("    └─", "└─└─")
+        while " └─" in line:
+            line = line.replace(" └─", "└─")
+        
+        while "└─" in line:
+            line = line.replace("└─", "*")
+        
+        # 앞부분의 * 개수와 문자열 추출
+        star_count = 0
+        for char in line:
+            if char == '*':
+                star_count += 1
+            else:
+                break
+        clean_str = line.replace('*', '').strip()
+        
+        # star_count를 deep로 동적 변환
+        deep = self._get_depth_from_star_count(star_count, depth_mapping)
+        
+        has_pipe = "|" in line
+        
+        # 파일/폴더 정보 추출
+        if has_pipe:
+            parts = clean_str.split('|')
+            if len(parts) >= 3:
+                filename = parts[0].strip()
+                size = parts[1].strip()
+                filekey = parts[2].strip()
+                item_type = "file"
+            else:
+                filename = clean_str
+                size = ""
+                filekey = ""
+                item_type = "directory"
+        else:
+            filename = clean_str
+            size = ""
+            filekey = ""
+            item_type = "directory"
+        
+        # path_stack 조정 (현재 깊이에 맞게)
+        while len(path_stack) > deep:
+            path_stack.pop()
+        
+        # 현재 아이템 정보
+        current_item = {
+            "name": filename,
+            "type": item_type,
+            "deep": deep,
+            "weight": star_count,
+            "path": str(Path(*path_stack, filename)).replace(' ', '_')  # 공백을 언더스코어로 변경
+        }
+        
+        if item_type == "file":
+            current_item["size"] = size
+            current_item["filekey"] = filekey
+        else:
+            current_item["children"] = []
+        
+        # JSON 구조에 추가 (배열 구조)
+        current_array = json_obj
+        for path_name in path_stack:
+            # 해당 이름의 디렉토리를 찾아서 그 children 배열로 이동
+            found = None
+            for item in current_array:
+                if item["name"] == path_name and item["type"] == "directory":
+                    found = item
+                    break
+            if found:
+                current_array = found["children"]
+        
+        # 현재 배열에 아이템 추가
+        current_array.append(current_item)
+        
+        # 디렉토리인 경우 path_stack에 추가
+        if item_type == "directory":
+            path_stack.append(filename)
+        
+        # if self.DEBUG:
+        #     print(f"[deep={deep}] [weight={star_count}] {item_type[0].upper()} {filename}" + 
+        #         (f" , {size} , {filekey}" if item_type == "file" else " , , "))
+        
+        return current_item
+
+    def json_info(self, datasetkey=None):
+        """데이터셋 목록 또는 파일 트리를 JSON 형태로 반환"""
+        filetree_url = f"{self.BASE_FILETREE_URL}/{datasetkey}.do"        
+        response = requests.get(filetree_url)
+        response.encoding = response.apparent_encoding
+        text = response.text
+        
+        # JSON 구조를 위한 딕셔너리
+        result = {
+            "datasetkey": datasetkey,
+            "structure": []  # 배열로 변경
+        }
+        
+        lines = text.splitlines()
+        
+        is_notify = True
+        json_obj = []  # 루트 배열
+        depth_mapping = []  # 각 파싱 세션마다 새로운 depth_mapping
+        path_stack = []     # 현재 경로를 추적하는 스택
+
+        # if self.DEBUG:
+        #     test_count = 10
+
+        for line in lines:
+            if not line.strip() or '공지사항' in line or '=' in line:
+                is_notify = False
+                continue
+            if is_notify:
+                continue
+
+            self._json_line(line, json_obj, depth_mapping, path_stack, weight=0, deep=0)
+
+            # if self.DEBUG:
+            #     test_count -= 1
+            #     if test_count <= 0:
+            #         break
+        
+        result["structure"] = json_obj
+        
+        return result
             
 #########################################################################################################
 
