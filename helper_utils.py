@@ -38,12 +38,6 @@ import importlib
 import helper_c0z0c_dev as helper
 importlib.reload(helper)
 
-
-import importlib
-import helper_c0z0c_dev as helper
-importlib.reload(helper)
-import seaborn as sns
-
 # --- Scikit-learn: 데이터 전처리, 모델, 평가 ---
 from sklearn.linear_model import LinearRegression  # 선형/다중 회귀
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler  # 다항 특성, 정규화
