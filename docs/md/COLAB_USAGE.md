@@ -2,7 +2,7 @@
 layout: default
 title: Colab 가이드
 description: "Colab 가이드"
-date: 2025-08-29
+date: 2025-09-03
 cache-control: no-cache
 expires: 0
 pragma: no-cache

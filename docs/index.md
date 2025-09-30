@@ -2,7 +2,7 @@
 layout: default
 title: Jupyter 한글 환경 설정 모듈
 description: Jupyter Notebook과 Google Colab에서 한글 폰트 설정, pandas 확장 기능, 데이터 캐시를 제공하는 모듈
-date: 2025-08-29
+date: 2025-09-03
 cache-control: no-cache
 expires: 0
 pragma: no-cache
