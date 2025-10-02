@@ -326,7 +326,7 @@ def save_datasets_as_json(save_datasets, dataset_path):
             'target': save_datasets[split]['target'].tolist() if isinstance(save_datasets[split]['target'], np.ndarray) else list(save_datasets[split]['target'])
         }
     
-    json_data['target_names'] = list(final_datasets['target_names'])
+    json_data['target_names'] = list(save_datasets['target_names'])
     
     # JSON으로 저장
     with open(dataset_path, 'w', encoding='utf-8') as f:
