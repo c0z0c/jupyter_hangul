@@ -27,10 +27,9 @@ try:
 except ImportError:
     IS_COLAB = False
 
-
 if not globals().get('_HU_INITIALIZED', False):
     # 초기화/로깅/설정 코드(한 번만 실행되길 바라는 부분)
-    print("✅ 설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
+    print("설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
     globals()['_HU_INITIALIZED'] = True
 
 from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
@@ -281,6 +280,7 @@ def load_model_dict(path, pth_name=None):
     model_info['file_name'] = os.path.basename(load_path)
     return model_state, model_info
 
+################################################################################################################
 
 def search_pth_files(base_path):
     """
@@ -312,6 +312,47 @@ def search_pth_files(base_path):
         print("pth 파일을 찾을 수 없습니다.")
 
     return pth_files
+
+
+def save_datasets_as_json(save_datasets, dataset_path):
+    """데이터셋을 JSON 형태로 저장"""
+    print(f"JSON 형태로 데이터셋 저장 중: {dataset_path}")
+    
+    # numpy array를 list로 변환
+    json_data = {}
+    for split in ['train', 'validation', 'test']:
+        json_data[split] = {
+            'text': save_datasets[split]['text'].tolist() if isinstance(save_datasets[split]['text'], np.ndarray) else list(save_datasets[split]['text']),
+            'target': save_datasets[split]['target'].tolist() if isinstance(save_datasets[split]['target'], np.ndarray) else list(save_datasets[split]['target'])
+        }
+    
+    json_data['target_names'] = list(final_datasets['target_names'])
+    
+    # JSON으로 저장
+    with open(dataset_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"저장 완료: {dataset_path}")
+
+def load_datasets_from_json(dataset_path):
+    """JSON에서 데이터셋 로드"""
+    print(f"JSON에서 데이터셋 로드: {dataset_path}")
+    
+    with open(dataset_path, 'r', encoding='utf-8') as f:
+        json_data = json.load(f)
+    
+    # numpy array로 변환
+    load_datasets = {}
+    for split in ['train', 'validation', 'test']:
+        load_datasets[split] = {
+            'text': np.array(json_data[split]['text']),
+            'target': np.array(json_data[split]['target'])
+        }
+    
+    load_datasets['target_names'] = json_data['target_names']
+    
+    print("로드 완료")
+    return load_datasets
 
 ################################################################################################################
 
