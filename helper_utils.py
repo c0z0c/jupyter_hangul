@@ -945,4 +945,39 @@ def unzip(zipfile_list, remove_zip=False):
         else:
             print(f"존재하지 않은 파일: {zip_path}")
     return unzip_paths
+
+from typing import List
+def zip_progress(files: List[str], zip_path: str, arc_names: List[str] = None, compression = None) -> str:
+    """파일 목록을 ZIP으로 압축하면서 tqdm 프로그레스바 표시."""
+    from pathlib import Path
+    import zipfile
+    try:
+        pbar_kwargs = get_tqdm_kwargs() or {}
+    except Exception:
+        pbar_kwargs = {}
+
+    if compression is None:
+        compression = zipfile.ZIP_STORED
+
+    paths = [Path(p) for p in files]
+    exist_paths = [p for p in paths if p.exists()]
+    if not exist_paths:
+        print("zip_progress: 압축할 유효한 파일이 없습니다.")
+        return None
+
+    try:
+        with zipfile.ZipFile(zip_path, 'w', compression) as zf:
+            with tqdm(total=len(exist_paths), desc="Zipping", **pbar_kwargs) as pbar:
+                for i, p in enumerate(exist_paths):
+                    arc = None
+                    if arc_names and i < len(arc_names):
+                        arc = arc_names[i]
+                    else:
+                        arc = p.name
+                    zf.write(str(p), arc)
+                    pbar.update(1)
+        return zip_path
+    except Exception as e:
+        print(f"zip_progress 실패: {e}")
+        return None
 ################################################################################################################
