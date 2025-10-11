@@ -1049,7 +1049,7 @@ def reset_tqdm(pbar, iterable=None, total=None, desc=None, **kwargs):
     pbar.refresh()
     return pbar
 
-def create_or_reset_tqdm(pbar, iterable=None, total=None, desc="Progress", **kwargs):
+def create_or_reset_tqdm(pbar=None, iterable=None, total=None, desc="Progress", **kwargs):
     """
     기존 create_tqdm과 reset_tqdm을 활용한 통합 함수
 
