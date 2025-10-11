@@ -3,7 +3,7 @@
 
 주요 기능:
 - 경로 관리: drive_root(), get_path_modeling(), get_path_modeling_release()
-- 디렉토리 구조 출력: print_dir_tree(), print_json_tree(), print_git_tree()
+- 디렉토리 구조 출력: print_dir_tree(), print_json_tree(), print_dic_tree()
 - 모델 저장/로드: save_model_dict(), load_model_dict(), search_pth_files()
 - AI Hub 데이터셋 관리: AIHubShell 클래스 (검색, 다운로드, 압축해제)
 - 압축 파일 처리: unzip()
@@ -72,7 +72,8 @@ import signal
 from datetime import datetime
 from pathlib import Path
 import re
-from tqdm import tqdm
+#from tqdm import tqdm
+from tqdm.notebook import tqdm
 import numpy as np  # 수치 연산
 import matplotlib.pyplot as plt  # 시각화
 import pandas as pd
@@ -181,7 +182,7 @@ def print_json_tree(data, indent="", max_depth=4, _depth=0, list_count=2, print_
         else:
             print(f"{indent}{type(data).__name__}")
 
-def print_git_tree(data, indent="", max_depth=3, _depth=0):
+def print_dic_tree(dic_data, indent="", max_depth=3, _depth=0):
     """
     PyTorch tensor/딕셔너리/리스트를 git tree 스타일로 출력
     """
@@ -190,29 +191,29 @@ def print_git_tree(data, indent="", max_depth=3, _depth=0):
 
     if _depth > max_depth:
         return
-    if isinstance(data, dict):
-        for key, value in data.items():
+    if isinstance(dic_data, dict):
+        for key, value in dic_data.items():
             print(f"{indent}├─ {key} [{type(value).__name__}]")
-            print_git_tree(value, indent + "│  ", max_depth, _depth + 1)
-    elif isinstance(data, (list, tuple)):
-        for i, item in enumerate(data):
+            print_dic_tree(value, indent + "│  ", max_depth, _depth + 1)
+    elif isinstance(dic_data, (list, tuple)):
+        for i, item in enumerate(dic_data):
             print(f"{indent}├─ [{i}] [{type(item).__name__}]")
-            print_git_tree(item, indent + "│  ", max_depth, _depth + 1)
-    elif torch.is_tensor(data):
-        shape = tuple(data.shape)
-        dtype = str(data.dtype)
-        preview = str(data)
+            print_dic_tree(item, indent + "│  ", max_depth, _depth + 1)
+    elif torch.is_tensor(dic_data):
+        shape = tuple(dic_data.shape)
+        dtype = str(dic_data.dtype)
+        preview = str(dic_data)
         preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
         print(f"{indent}└─ Tensor shape={shape} dtype={dtype} preview={preview_str}")
-    elif isinstance(data, np.ndarray):
-        shape = data.shape
-        dtype = data.dtype
-        preview = str(data)
+    elif isinstance(dic_data, np.ndarray):
+        shape = dic_data.shape
+        dtype = dic_data.dtype
+        preview = str(dic_data)
         preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
         print(f"{indent}└─ ndarray shape={shape} dtype={dtype} preview={preview_str}")
     else:
-        val_str = str(data)
-        print(f"{indent}└─ {type(data).__name__}: {val_str[:80]}{'...' if len(val_str)>80 else ''}")
+        val_str = str(dic_data)
+        print(f"{indent}└─ {type(dic_data).__name__}: {val_str[:80]}{'...' if len(val_str)>80 else ''}")
 
 ################################################################################################################
 
@@ -922,7 +923,6 @@ class AIHubShell:
 
 def unzip(zipfile_list, remove_zip=False):
     import zipfile
-    from tqdm import tqdm
     unzip_paths = []
     for zip_path in zipfile_list:
         if os.path.exists(zip_path) and os.path.isfile(zip_path):
