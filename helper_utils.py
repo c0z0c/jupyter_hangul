@@ -981,3 +981,93 @@ def zip_progress(files: List[str], zip_path: str, arc_names: List[str] = None, c
         print(f"zip_progress 실패: {e}")
         return None
 ################################################################################################################
+def create_tqdm(iterable=None, total=None, desc="Progress", **kwargs):
+    """
+    tqdm 진행률 표시줄을 생성하거나 재사용하는 함수
+
+    Args:
+        iterable: 반복 가능한 객체 (range, list 등)
+        total: 전체 개수 (iterable이 None일 때 사용)
+        desc: 설명 텍스트
+        **kwargs: 추가 tqdm 옵션
+
+    Returns:
+        tqdm 객체
+    """
+    # 기본 옵션 설정
+    default_kwargs = get_tqdm_kwargs() if 'get_tqdm_kwargs' in globals() else {}
+    default_kwargs.update(kwargs)
+
+    if iterable is not None:
+        # iterable이 있으면 직접 사용
+        return tqdm(iterable, desc=desc, **default_kwargs)
+    else:
+        # manual update용 tqdm
+        return tqdm(total=total, desc=desc, **default_kwargs)
+
+
+def reset_tqdm(pbar, iterable=None, total=None, desc=None, **kwargs):
+    """
+    기존 tqdm 객체를 재설정하는 함수
+
+    Args:
+        pbar: 기존 tqdm 객체
+        iterable: 새로운 반복 가능한 객체
+        total: 새로운 전체 개수
+        desc: 새로운 설명 텍스트
+        **kwargs: 추가 옵션
+
+    Returns:
+        재설정된 tqdm 객체
+    """
+    if pbar is None:
+        return create_tqdm(iterable, total, desc, **kwargs)
+
+    # 기존 pbar 재설정
+    if total is not None:
+        pbar.reset(total=total)
+    else:
+        pbar.reset()
+
+    if desc is not None:
+        pbar.set_description(desc)
+
+    # 내부 상태 초기화
+    pbar.n = 0
+    pbar.last_print_n = 0
+    pbar.start_t = pbar._time()
+    pbar.last_print_t = pbar.start_t
+
+    # 추가 옵션 적용
+    default_kwargs = get_tqdm_kwargs() if 'get_tqdm_kwargs' in globals() else {}
+    default_kwargs.update(kwargs)
+
+    for key, value in default_kwargs.items():
+        if hasattr(pbar, key):
+            setattr(pbar, key, value)
+
+    pbar.refresh()
+    return pbar
+
+def create_or_reset_tqdm(pbar, iterable=None, total=None, desc="Progress", **kwargs):
+    """
+    기존 create_tqdm과 reset_tqdm을 활용한 통합 함수
+
+    Args:
+        pbar: 기존 tqdm 객체 (None이면 새로 생성)
+        iterable: 반복 가능한 객체
+        total: 전체 개수
+        desc: 설명 텍스트
+        **kwargs: 추가 tqdm 옵션
+
+    Returns:
+        tqdm 객체 (새로 생성되거나 재설정된)
+    """
+    if pbar is None:
+        # 새로 생성
+        return create_tqdm(iterable=iterable, total=total, desc=desc, **kwargs)
+    else:
+        # 기존 것 재설정
+        return reset_tqdm(pbar, iterable=iterable, total=total, desc=desc, **kwargs)
+
+################################################################################################################
