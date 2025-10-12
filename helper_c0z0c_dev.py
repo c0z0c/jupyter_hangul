@@ -2629,11 +2629,8 @@ def pd_commit_has(idx_or_hash, commit_dir=None):
     return False
 
 #########################################################################################################
-
-# 모듈 import 시 자동으로 setup 실행
-if __name__ != "__main__":
-    print("🌐 https://c0z0c.github.io/jupyter_hangul")
-    setup()
-    set_pd_root_base()
-    if __is_setup_print_log:
-        print('pd commit 저장 경로 =', pd_root())
+print("🌐 https://c0z0c.github.io/jupyter_hangul")
+setup()
+set_pd_root_base()
+if __is_setup_print_log:
+    print('pd commit 저장 경로 =', pd_root())
