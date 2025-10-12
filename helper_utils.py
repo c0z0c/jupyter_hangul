@@ -1055,10 +1055,8 @@ if IS_COLAB:
         datefmt='%Y-%m-%d %H:%M:%S'
     ))
     logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
 else:
     logging.basicConfig(
-        level=logging.DEBUG,
         format='%(asctime)s [%(levelname)s] %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
@@ -1071,5 +1069,6 @@ else:
             datefmt='%Y-%m-%d %H:%M:%S'
         ))
 
+# logger.setLevel(logging.DEBUG)
 ################################################################################################################
 print('helper_utils.py loaded')
