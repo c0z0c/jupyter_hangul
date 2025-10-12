@@ -1,6 +1,3 @@
-"""
-프로젝트 사용에 필요한 유틸리티 함수
-"""
 import os
 import sys
 
@@ -11,49 +8,25 @@ try:
 except ImportError:
     IS_COLAB = False
 
-# --- Scikit-learn: 데이터 전처리, 모델, 평가 ---
-from sklearn.linear_model import LinearRegression  # 선형/다중 회귀
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler  # 다항 특성, 정규화
-from sklearn.model_selection import train_test_split  # 데이터 분할
-from sklearn.datasets import (
-    fetch_california_housing, load_iris, make_moons, make_circles,
-    load_breast_cancer, load_wine
-)  # 다양한 예제 데이터셋
-from sklearn import datasets  # 추가 데이터셋
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier, plot_tree  # 결정트리
-from sklearn.ensemble import RandomForestClassifier  # 랜덤포레스트
-from sklearn.metrics import accuracy_score, mean_squared_error  # 평가 지표
-
-# --- 기타 라이브러리 ---
-from PIL import Image  # 이미지 처리
-
 # --- PyTorch: 딥러닝 관련 ---
 import torch
-import torch.nn as nn  # 신경망
-import torch.optim as optim
-import torch.nn.functional as F  # 활성화 함수
-from torch.utils.data import Dataset, DataLoader  # PyTorch 데이터셋/로더
-from torchvision.transforms import v2
 
 # --- 기타 ---
-import os
-import yaml
 import requests
 import tarfile
 import shutil
 import json
-import signal
 from datetime import datetime
 from pathlib import Path
 import re
-#from tqdm import tqdm
 from tqdm.notebook import tqdm
 import numpy as np  # 수치 연산
-import matplotlib.pyplot as plt  # 시각화
-import pandas as pd
+import logging
+import pytz
 
-# --- 디바이스 설정 ---
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+################################################################################################################
+
+__version__ = "2.6.0"
 
 ################################################################################################################
 
@@ -1046,10 +1019,8 @@ def create_or_reset_tqdm(pbar=None, iterable=None, total=None, desc="Progress", 
 
 ################################################################################################################
 
-import logging
 class ShortLevelFormatter(logging.Formatter):
     """로그 레벨을 1글자로 축약 (DEBUG→D, INFO→I, WARNING→W, ERROR→E, CRITICAL→C)"""
-    import pytz
 
     LEVEL_MAP = {
         'DEBUG': 'D',

@@ -67,11 +67,8 @@ import hashlib
 import warnings
 import subprocess
 import urllib.request
-import signal
-import re
 from pathlib import Path
 from datetime import datetime
-import tarfile
 
 # Third-party imports
 import matplotlib.font_manager
@@ -90,16 +87,15 @@ except ImportError:
 try:
     import google.colab
     from google.colab import drive
-    COLAB_AVAILABLE = True
+    IS_COLAB = True
 except ImportError:
-    COLAB_AVAILABLE = False
-
+    IS_COLAB = False
 
 # =============================================================================
 # CONSTANTS AND GLOBAL VARIABLES
 # =============================================================================
 
-__version__ = "2.5.0"
+__version__ = "2.6.0"
 
 # Font management
 __font_path = ""
@@ -119,7 +115,7 @@ __DEBUG_ON = False
 # =============================================================================
 def _in_colab():
     """Colab 환경 감지"""
-    return COLAB_AVAILABLE
+    return IS_COLAB
 
 def _get_text_width(text):
     """텍스트 폭 계산 (한글 2칸, 영문 1칸)"""
@@ -292,7 +288,7 @@ def load_font():
             
             # Google Drive 마운트 시도 (출력 없이)
             try:
-                if COLAB_AVAILABLE:
+                if IS_COLAB:
                     drive.mount("/content/drive", force_remount=True)
             except Exception:
                 pass
@@ -2633,7 +2629,14 @@ print("🌐 https://c0z0c.github.io/jupyter_hangul")
 setup()
 set_pd_root_base()
 if __is_setup_print_log:
-    # print('pd commit 저장 경로 =', pd_root())
-    plt.figure(figsize=(4, 0.1))
-    plt.title(f'pd commit 저장 경로 = {pd_root()}')
-    plt.show()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+
+        # 안전한 방식으로 Figure 생성
+        fig = plt.figure(figsize=(4, 0.1))
+        ax = fig.add_subplot(111)
+        ax.set_title(f'pd commit 저장 경로 = {pd_root()}', fontsize=10)
+        ax.axis('off')  # 축 숨기기
+        plt.tight_layout()
+        plt.show()
+        plt.close(fig)  # Figure 명시적으로 닫기
