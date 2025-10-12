@@ -2628,15 +2628,18 @@ def pd_commit_has(idx_or_hash, commit_dir=None):
 print("🌐 https://c0z0c.github.io/jupyter_hangul")
 setup()
 set_pd_root_base()
-if __is_setup_print_log:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+# if __is_setup_print_log:
+#     with warnings.catch_warnings():
+#         warnings.simplefilter("ignore")
 
-        # 안전한 방식으로 Figure 생성
-        fig = plt.figure(figsize=(4, 0.1))
-        ax = fig.add_subplot(111)
-        ax.set_title(f'pd commit 저장 경로 = {pd_root()}', fontsize=10)
-        ax.axis('off')  # 축 숨기기
-        plt.tight_layout()
-        plt.show()
-        plt.close(fig)  # Figure 명시적으로 닫기
+#         # 안전한 방식으로 Figure 생성
+#         fig = plt.figure(figsize=(4, 0.1))
+#         ax = fig.add_subplot(111)
+#         ax.set_title(f'pd commit 저장 경로 = {pd_root()}', fontsize=10)
+#         ax.axis('off')  # 축 숨기기
+#         plt.tight_layout()
+#         plt.show()
+#         plt.close(fig)  # Figure 명시적으로 닫기
+
+if __is_setup_print_log:
+    print('pd commit 저장 경로 =', pd_root())
