@@ -27,16 +27,6 @@ try:
 except ImportError:
     IS_COLAB = False
 
-if not globals().get('_HU_INITIALIZED', False):
-    # 초기화/로깅/설정 코드(한 번만 실행되길 바라는 부분)
-    print("설정 완료: 한글 폰트, plt 전역 등록, pandas 확장, 캐시 기능")
-    globals()['_HU_INITIALIZED'] = True
-
-from urllib.request import urlretrieve; urlretrieve("https://raw.githubusercontent.com/c0z0c/jupyter_hangul/refs/heads/beta/helper_c0z0c_dev.py", "helper_c0z0c_dev.py")
-import importlib
-import helper_c0z0c_dev as helper
-importlib.reload(helper)
-
 # --- Scikit-learn: 데이터 전처리, 모델, 평가 ---
 from sklearn.linear_model import LinearRegression  # 선형/다중 회귀
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler  # 다항 특성, 정규화
@@ -96,7 +86,7 @@ def get_tqdm_kwargs():
 
 def drive_root():
     root_path = os.path.join("D:\\", "GoogleDrive")
-    if helper.is_colab:
+    if IS_COLAB:
         root_path = os.path.join("/content/drive/MyDrive")
     return root_path
 
