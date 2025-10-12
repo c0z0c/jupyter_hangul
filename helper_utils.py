@@ -1,21 +1,5 @@
 """
-프로젝트 사용에 필요한 유틸리티 함수 및 라이브러리 모음
-
-주요 기능:
-- 경로 관리: drive_root(), get_path_modeling(), get_path_modeling_release()
-- 디렉토리 구조 출력: print_dir_tree(), print_json_tree(), print_dic_tree()
-- 모델 저장/로드: save_model_dict(), load_model_dict(), search_pth_files()
-- AI Hub 데이터셋 관리: AIHubShell 클래스 (검색, 다운로드, 압축해제)
-- 압축 파일 처리: unzip()
-- 진행률 표시: get_tqdm_kwargs()
-
-포함된 라이브러리:
-- 머신러닝: scikit-learn (회귀, 분류, 전처리, 평가)
-- 딥러닝: PyTorch (신경망, 최적화, 데이터로더)
-- 데이터 처리: pandas, numpy
-- 시각화: matplotlib, seaborn
-- 이미지 처리: PIL
-- 기타: requests, yaml, tqdm, pathlib
+프로젝트 사용에 필요한 유틸리티 함수
 """
 import os
 import sys

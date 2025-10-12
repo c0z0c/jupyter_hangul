@@ -2633,4 +2633,7 @@ print("🌐 https://c0z0c.github.io/jupyter_hangul")
 setup()
 set_pd_root_base()
 if __is_setup_print_log:
-    print('pd commit 저장 경로 =', pd_root())
+    # print('pd commit 저장 경로 =', pd_root())
+    plt.figure(figsize=(4, 0.1))
+    plt.title(f'pd commit 저장 경로 = {pd_root()}')
+    plt.show()
