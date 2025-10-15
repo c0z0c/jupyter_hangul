@@ -24,283 +24,64 @@ import numpy as np  # 수치 연산
 import logging
 import pytz
 
+
 ################################################################################################################
 
 __version__ = "2.6.0"
 
 ################################################################################################################
 
-def get_tqdm_kwargs():
-    """Widget 오류를 방지하는 안전한 tqdm 설정"""
-    return {
-        'disable': False,
-        'leave': True,
-        'file': sys.stdout,
-        'ascii': True,  # ASCII 문자만 사용
-        'dynamic_ncols': False,
-#        'ncols': 80  # 고정 폭
+class ShortLevelFormatter(logging.Formatter):
+    """로그 레벨을 1글자로 축약 (DEBUG→D, INFO→I, WARNING→W, ERROR→E, CRITICAL→C)"""
+
+    LEVEL_MAP = {
+        'DEBUG': 'D',
+        'INFO': 'I',
+        'WARNING': 'W',
+        'ERROR': 'E',
+        'CRITICAL': 'C'
     }
+    kst = pytz.timezone('Asia/Seoul')
 
-def drive_root():
-    root_path = os.path.join("D:\\", "GoogleDrive")
-    if IS_COLAB:
-        root_path = os.path.join("/content/drive/MyDrive")
-    return root_path
+    def format(self, record):
+        # 원본 레벨명을 약자로 교체
+        record.levelname = self.LEVEL_MAP.get(record.levelname, record.levelname)
+        return super().format(record)
 
-def get_path_modeling(add_path = None):
-    modeling_path = "modeling"
-    path = os.path.join(drive_root(),modeling_path)
-    if add_path is not None:
-        path = os.path.join(path,add_path)
-    return path
-
-def get_path_modeling_release(add_path = None):
-    modeling_path = "modeling_release"
-    path = os.path.join(drive_root(),modeling_path)
-    if add_path is not None:
-        path = os.path.join(path,add_path)
-    return path
+    def formatTime(self, record, datefmt=None):
+        """record.created를 KST로 변환해 포맷된 문자열 반환"""
+        ct = datetime.fromtimestamp(record.created, tz=self.kst)
+        if datefmt:
+            return ct.strftime(datefmt)
+        return ct.strftime('%Y-%m-%d %H:%M:%S')
     
-################################################################################################################
-
-def print_dir_tree(root, indent=""):
-    """디렉토리 트리를 출력합니다.
-
-    Args:
-        root (str): 시작 디렉토리 경로
-        max_depth (int, optional): 최대 깊이. Defaults to 2.
-        indent (str, optional): 들여쓰기 문자열. Defaults to "".
-    """
-    import os
-    try:
-        items = os.listdir(root)
-    except Exception as e:
-        print(indent + f"[Error] {e}")
-        return
-
-    img_count = len([f for f in os.listdir(root)])
-    for item in items:
-        path = os.path.join(root, item)
-        if os.path.isdir(path):
-            print(indent + "|-- "+ item)
-            # 이미지 파일 개수만 출력
-            img_count = len([f for f in os.listdir(path)])
-            print(indent + "   "+ f"[데이터파일: {img_count}개]")
-            print_dir_tree(root=path, indent=indent + "   ")
-        else:
-            print(indent + "|-- "+ item)
-            
-
-def print_json_tree(data, indent="", max_depth=4, _depth=0, list_count=2, print_value=True, limit_value_text=100):
-    """
-    JSON 객체를 지정한 단계(max_depth)까지 트리 형태로 출력
-    - list 타입은 3개 이상일 때 개수만 출력
-    - 하위 노드가 값일 경우 key(type) 형태로 출력
-    - print_value=True일 때 key(type): 값 형태로 출력
-    """
-    if _depth > max_depth:
-        return
-    if isinstance(data, dict):
-        for key, value in data.items():
-            if isinstance(value, (dict, list)):
-                print(f"{indent}|-- {key}")
-                print_json_tree(value, indent + "    ", max_depth, _depth + 1, list_count, print_value)
-            else:
-                if print_value:
-                    print(f"{indent}|-- {key}({type(value).__name__}): {value if len(str(value)) < limit_value_text else f'{str(value)[:30]}...'}")
-                else:
-                    print(f"{indent}|-- {key}({type(value).__name__})")
-    elif isinstance(data, list):
-        if len(data) > list_count:
-            print(f"{indent}|-- [list] ({len(data)} items)")
-        else:
-            for i, item in enumerate(data):
-                if isinstance(item, (dict, list)):
-                    print(f"{indent}|-- [{i}]")
-                    print_json_tree(item, indent + "    ", max_depth, _depth + 1, list_count, print_value)
-                else:
-                    if print_value:
-                        print(f"{indent}|-- [{i}]({type(item).__name__}): {item if len(str(item)) < limit_value_text else f'{str(item)[:30]}...'}")
-                    else:
-                        print(f"{indent}|-- [{i}]({type(item).__name__})")
-    else:
-        if print_value:
-            print(f"{indent}{type(data).__name__}: {data if len(str(data)) < limit_value_text else f'{str(data)[:30]}...'}")
-        else:
-            print(f"{indent}{type(data).__name__}")
-
-def print_dic_tree(dic_data, indent="", max_depth=3, _depth=0):
-    """
-    PyTorch tensor/딕셔너리/리스트를 git tree 스타일로 출력
-    """
-    import torch
-    import numpy as np
-
-    if _depth > max_depth:
-        return
-    if isinstance(dic_data, dict):
-        for key, value in dic_data.items():
-            print(f"{indent}├─ {key} [{type(value).__name__}]")
-            print_dic_tree(value, indent + "│  ", max_depth, _depth + 1)
-    elif isinstance(dic_data, (list, tuple)):
-        for i, item in enumerate(dic_data):
-            print(f"{indent}├─ [{i}] [{type(item).__name__}]")
-            print_dic_tree(item, indent + "│  ", max_depth, _depth + 1)
-    elif torch.is_tensor(dic_data):
-        shape = tuple(dic_data.shape)
-        dtype = str(dic_data.dtype)
-        preview = str(dic_data)
-        preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
-        print(f"{indent}└─ Tensor shape={shape} dtype={dtype} preview={preview_str}")
-    elif isinstance(dic_data, np.ndarray):
-        shape = dic_data.shape
-        dtype = dic_data.dtype
-        preview = str(dic_data)
-        preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
-        print(f"{indent}└─ ndarray shape={shape} dtype={dtype} preview={preview_str}")
-    else:
-        val_str = str(dic_data)
-        print(f"{indent}└─ {type(dic_data).__name__}: {val_str[:80]}{'...' if len(val_str)>80 else ''}")
-
-################################################################################################################
-
-def save_model_dict(model, path, pth_name, kwargs=None):
-    """
-    모델 state_dict와 추가 정보를 저장
-    """
-    def safe_makedirs(path):
-        """안전한 디렉토리 생성"""
-        if os.path.exists(path) and not os.path.isdir(path):
-            os.remove(path)  # 파일이면 삭제
-        os.makedirs(path, exist_ok=True)
-
-    # 디렉토리 생성
-    safe_makedirs(path)
-
-    # 모델 구조 정보 추출
-    model_info = {
-        'class_name': model.__class__.__name__,
-        'init_args': {},
-        'str': str(model),
-        'repr': repr(model),
-        'modules': [m.__class__.__name__ for m in model.modules()],
-    }
-
-    # 생성자 인자 자동 추출(가능한 경우)
-    if hasattr(model, '__dict__'):
-        for key in ['in_ch', 'base_ch', 'num_classes', 'out_ch']:
-            if hasattr(model, key):
-                model_info['init_args'][key] = getattr(model, key)
-
-    # kwargs 처리
-    extra_info = {}
-    if kwargs is not None:
-        if isinstance(kwargs, str):
-            extra_info = json.loads(kwargs)
-        elif isinstance(kwargs, dict):
-            extra_info = kwargs
-
-    model_info.update(extra_info)
-
-    # 저장할 dict 구성
-    save_dict = {
-        'model_state': model.state_dict(),
-        'class_name': model.__class__.__name__,
-        'model_info': model_info,
-    }
-
-    save_path = os.path.join(path, f"{pth_name}.pth")
-    torch.save(save_dict, save_path)
-    return save_path
-
-def load_model_dict(path, pth_name=None):
-    """
-    save_model_dict로 저장한 모델을 불러오는 함수
-    반환값: (model_state, model_info)
-    """
-    import torch
-    load_path = path
-    if pth_name is not None:
-        load_path = os.path.join(path, f"{pth_name}.pth")
-    checkpoint = torch.load(load_path, map_location='cpu', weights_only=False)  # <-- 여기 추가
-    model_state = checkpoint.get('model_state')
-    model_info = checkpoint.get('model_info')
-    model_info['file_name'] = os.path.basename(load_path)
-    return model_state, model_info
-
-################################################################################################################
-
-def search_pth_files(base_path):
-    """
-    입력된 경로의 하위 폴더들에서 pth 파일들을 검색
-    """
-    pth_files = []
-
-    if not os.path.exists(base_path):
-        print(f"경로가 존재하지 않습니다: {base_path}")
-        return pth_files
-
-    print(f"pth 파일 검색 시작: {base_path}")
-
-    # 하위 폴더들을 순회하며 pth 파일 검색
-    for root, dirs, files in os.walk(base_path):
-        for file in files:
-            if file.endswith('.pth'):
-                pth_path = os.path.join(root, file)
-                pth_files.append(pth_path)
-
-    # 결과 정리 및 출력
-    if pth_files:
-        print(f"\n발견된 pth 파일들 ({len(pth_files)}개):")
-        for i, pth_file in enumerate(pth_files, 1):
-            # 상대 경로로 표시 (base_path 기준)
-            rel_path = os.path.relpath(pth_file, base_path)
-            print(f" {i:2d}. {rel_path}")
-    else:
-        print("pth 파일을 찾을 수 없습니다.")
-
-    return pth_files
-
-
-def save_datasets_as_json(save_datasets, dataset_path):
-    """데이터셋을 JSON 형태로 저장"""
-    print(f"JSON 형태로 데이터셋 저장 중: {dataset_path}")
+if IS_COLAB:
+    # Colab: 기존 핸들러 제거 후 재설정
+    logger = logging.getLogger()
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
     
-    # numpy array를 list로 변환
-    json_data = {}
-    for split in ['train', 'validation', 'test']:
-        json_data[split] = {
-            'text': save_datasets[split]['text'].tolist() if isinstance(save_datasets[split]['text'], np.ndarray) else list(save_datasets[split]['text']),
-            'target': save_datasets[split]['target'].tolist() if isinstance(save_datasets[split]['target'], np.ndarray) else list(save_datasets[split]['target'])
-        }
+    handler = logging.StreamHandler()
+    handler.setFormatter(ShortLevelFormatter(
+        '%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logger.addHandler(handler)
+else:
+    logging.basicConfig(
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    logger = logging.getLogger()
     
-    json_data['target_names'] = list(save_datasets['target_names'])
-    
-    # JSON으로 저장
-    with open(dataset_path, 'w', encoding='utf-8') as f:
-        json.dump(json_data, f, ensure_ascii=False, indent=2)
-    
-    print(f"저장 완료: {dataset_path}")
+    # 기존 핸들러의 Formatter 교체
+    for handler in logging.getLogger().handlers:
+        handler.setFormatter(ShortLevelFormatter(
+            '%(asctime)s [%(levelname)s] %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S'
+        ))
 
-def load_datasets_from_json(dataset_path):
-    """JSON에서 데이터셋 로드"""
-    print(f"JSON에서 데이터셋 로드: {dataset_path}")
-    
-    with open(dataset_path, 'r', encoding='utf-8') as f:
-        json_data = json.load(f)
-    
-    # numpy array로 변환
-    load_datasets = {}
-    for split in ['train', 'validation', 'test']:
-        load_datasets[split] = {
-            'text': np.array(json_data[split]['text']),
-            'target': np.array(json_data[split]['target'])
-        }
-    
-    load_datasets['target_names'] = json_data['target_names']
-    
-    print("로드 완료")
-    return load_datasets
+# logger.setLevel(logging.DEBUG)
 
 ################################################################################################################
 
@@ -867,66 +648,341 @@ class AIHubShell:
         result["structure"] = json_obj
         
         return result
+################################################################################################################
 
-def unzip(zipfile_list, remove_zip=False):
-    import zipfile
-    unzip_paths = []
-    for zip_path in zipfile_list:
-        if os.path.exists(zip_path) and os.path.isfile(zip_path):
-            extract_dir = zip_path + ".unzip"
-            unzip_paths.append(extract_dir)
-            if not os.path.exists(extract_dir):
-                os.makedirs(extract_dir, exist_ok=True)
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    members = zip_ref.namelist()
-                    for member in tqdm(members, desc=f"압축 해제 중: {os.path.basename(zip_path)}", unit="file"):
-                        zip_ref.extract(member, extract_dir)
-                print(f"압축 해제 완료: {extract_dir}")
-            else:
-                print(f"이미 압축 해제됨: {extract_dir}")
-            try:
-                if remove_zip:
-                    os.remove(zip_path)
-            except FileNotFoundError as e:
-                print(f"파일이 없음 {e} : {zip_path}")
+def get_tqdm_kwargs():
+    """Widget 오류를 방지하는 안전한 tqdm 설정"""
+    return {
+        'disable': False,
+        'leave': True,
+        'file': sys.stdout,
+        'ascii': True,  # ASCII 문자만 사용
+        'dynamic_ncols': False,
+#        'ncols': 80  # 고정 폭
+    }
+
+def drive_root():
+    root_path = os.path.join("D:\\", "GoogleDrive")
+    if IS_COLAB:
+        root_path = os.path.join("/content/drive/MyDrive")
+    return root_path
+
+def get_path_modeling(add_path = None):
+    modeling_path = "modeling"
+    path = os.path.join(drive_root(),modeling_path)
+    if add_path is not None:
+        path = os.path.join(path,add_path)
+    return path
+
+def get_path_modeling_release(add_path = None):
+    modeling_path = "modeling_release"
+    path = os.path.join(drive_root(),modeling_path)
+    if add_path is not None:
+        path = os.path.join(path,add_path)
+    return path
+    
+################################################################################################################
+def download_gdrive_file(url, output_path, ignore=True):
+    try:
+        import gdown
+    except ImportError:
+        raise ImportError("gdown 모듈이 필요합니다. 'pip install gdown'으로 설치하세요.")
+
+    """Google Drive 파일 다운로드 함수
+
+    Args:
+        url (str): Google Drive 공유 링크
+        output_path (str): 다운로드할 파일 경로
+        ignore (bool, optional): True면 기존 파일 삭제 후 다운로드, False면 파일 있으면 건너뜀. Defaults to True.
+
+    Raises:
+        ValueError: Google Drive 파일 ID를 찾을 수 없습니다.
+    """
+    # 공유 링크에서 파일 ID 추출
+    if os.path.exists(output_path):
+        if ignore:
+            os.remove(output_path)
         else:
-            print(f"존재하지 않은 파일: {zip_path}")
-    return unzip_paths
+            return
 
-from typing import List
-def zip_progress(files: List[str], zip_path: str, arc_names: List[str] = None, compression = None) -> str:
-    """파일 목록을 ZIP으로 압축하면서 tqdm 프로그레스바 표시."""
-    from pathlib import Path
-    import zipfile
+    file_id_match = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
+    if not file_id_match:
+        raise ValueError("Google Drive 파일 ID를 찾을 수 없습니다.")
+    file_id = file_id_match.group(1)
+
+    gdown.download(f"https://drive.google.com/uc?id={file_id}", output_path, quiet=False)
+
+def download_http(url, output_path, ignore=True):
+    """
+    HTTP 파일 다운로드 함수 (진행률 표시)
+    url: 다운로드할 파일 URL
+    output_path: 저장할 파일 경로
+    ignore: True면 기존 파일 삭제 후 다운로드, False면 파일 있으면 건너뜀
+    """
+    if os.path.exists(output_path):
+        if ignore:
+            os.remove(output_path)
+        else:
+            print(f"이미 파일이 존재합니다: {output_path}")
+            return output_path
+
+    response = requests.get(url, stream=True)
+    total = int(response.headers.get('content-length', 0))
+    with open(output_path, 'wb') as file, tqdm(
+        desc=f"Downloading {os.path.basename(output_path)}",
+        total=total,
+        unit='B',
+        unit_scale=True,
+        unit_divisor=1024,
+        ascii=True
+    ) as bar:
+        for data in response.iter_content(chunk_size=1024):
+            size = file.write(data)
+            bar.update(size)
+    print(f"다운로드 완료: {output_path}")
+    return output_path
+
+################################################################################################################
+
+def print_dir_tree(root, indent=""):
+    """디렉토리 트리를 출력합니다.
+
+    Args:
+        root (str): 시작 디렉토리 경로
+        max_depth (int, optional): 최대 깊이. Defaults to 2.
+        indent (str, optional): 들여쓰기 문자열. Defaults to "".
+    """
+    import os
     try:
-        pbar_kwargs = get_tqdm_kwargs() or {}
-    except Exception:
-        pbar_kwargs = {}
-
-    if compression is None:
-        compression = zipfile.ZIP_STORED
-
-    paths = [Path(p) for p in files]
-    exist_paths = [p for p in paths if p.exists()]
-    if not exist_paths:
-        print("zip_progress: 압축할 유효한 파일이 없습니다.")
-        return None
-
-    try:
-        with zipfile.ZipFile(zip_path, 'w', compression) as zf:
-            with tqdm(total=len(exist_paths), desc="Zipping", **pbar_kwargs) as pbar:
-                for i, p in enumerate(exist_paths):
-                    arc = None
-                    if arc_names and i < len(arc_names):
-                        arc = arc_names[i]
-                    else:
-                        arc = p.name
-                    zf.write(str(p), arc)
-                    pbar.update(1)
-        return zip_path
+        items = os.listdir(root)
     except Exception as e:
-        print(f"zip_progress 실패: {e}")
-        return None
+        print(indent + f"[Error] {e}")
+        return
+
+    img_count = len([f for f in os.listdir(root)])
+    for item in items:
+        path = os.path.join(root, item)
+        if os.path.isdir(path):
+            print(indent + "|-- "+ item)
+            # 이미지 파일 개수만 출력
+            img_count = len([f for f in os.listdir(path)])
+            print(indent + "   "+ f"[데이터파일: {img_count}개]")
+            print_dir_tree(root=path, indent=indent + "   ")
+        else:
+            print(indent + "|-- "+ item)
+            
+
+def print_json_tree(data, indent="", max_depth=4, _depth=0, list_count=2, print_value=True, limit_value_text=100):
+    """
+    JSON 객체를 지정한 단계(max_depth)까지 트리 형태로 출력
+    - list 타입은 3개 이상일 때 개수만 출력
+    - 하위 노드가 값일 경우 key(type) 형태로 출력
+    - print_value=True일 때 key(type): 값 형태로 출력
+    """
+    if _depth > max_depth:
+        return
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, (dict, list)):
+                print(f"{indent}|-- {key}")
+                print_json_tree(value, indent + "    ", max_depth, _depth + 1, list_count, print_value)
+            else:
+                if print_value:
+                    print(f"{indent}|-- {key}({type(value).__name__}): {value if len(str(value)) < limit_value_text else f'{str(value)[:30]}...'}")
+                else:
+                    print(f"{indent}|-- {key}({type(value).__name__})")
+    elif isinstance(data, list):
+        if len(data) > list_count:
+            print(f"{indent}|-- [list] ({len(data)} items)")
+        else:
+            for i, item in enumerate(data):
+                if isinstance(item, (dict, list)):
+                    print(f"{indent}|-- [{i}]")
+                    print_json_tree(item, indent + "    ", max_depth, _depth + 1, list_count, print_value)
+                else:
+                    if print_value:
+                        print(f"{indent}|-- [{i}]({type(item).__name__}): {item if len(str(item)) < limit_value_text else f'{str(item)[:30]}...'}")
+                    else:
+                        print(f"{indent}|-- [{i}]({type(item).__name__})")
+    else:
+        if print_value:
+            print(f"{indent}{type(data).__name__}: {data if len(str(data)) < limit_value_text else f'{str(data)[:30]}...'}")
+        else:
+            print(f"{indent}{type(data).__name__}")
+
+def print_dic_tree(dic_data, indent="", max_depth=3, _depth=0):
+    """
+    PyTorch tensor/딕셔너리/리스트를 git tree 스타일로 출력
+    """
+    import torch
+    import numpy as np
+
+    if _depth > max_depth:
+        return
+    if isinstance(dic_data, dict):
+        for key, value in dic_data.items():
+            print(f"{indent}├─ {key} [{type(value).__name__}]")
+            print_dic_tree(value, indent + "│  ", max_depth, _depth + 1)
+    elif isinstance(dic_data, (list, tuple)):
+        for i, item in enumerate(dic_data):
+            print(f"{indent}├─ [{i}] [{type(item).__name__}]")
+            print_dic_tree(item, indent + "│  ", max_depth, _depth + 1)
+    elif torch.is_tensor(dic_data):
+        shape = tuple(dic_data.shape)
+        dtype = str(dic_data.dtype)
+        preview = str(dic_data)
+        preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
+        print(f"{indent}└─ Tensor shape={shape} dtype={dtype} preview={preview_str}")
+    elif isinstance(dic_data, np.ndarray):
+        shape = dic_data.shape
+        dtype = dic_data.dtype
+        preview = str(dic_data)
+        preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
+        print(f"{indent}└─ ndarray shape={shape} dtype={dtype} preview={preview_str}")
+    else:
+        val_str = str(dic_data)
+        print(f"{indent}└─ {type(dic_data).__name__}: {val_str[:80]}{'...' if len(val_str)>80 else ''}")
+
+################################################################################################################
+
+def save_model_dict(model, path, pth_name, kwargs=None):
+    """
+    모델 state_dict와 추가 정보를 저장
+    """
+    def safe_makedirs(path):
+        """안전한 디렉토리 생성"""
+        if os.path.exists(path) and not os.path.isdir(path):
+            os.remove(path)  # 파일이면 삭제
+        os.makedirs(path, exist_ok=True)
+
+    # 디렉토리 생성
+    safe_makedirs(path)
+
+    # 모델 구조 정보 추출
+    model_info = {
+        'class_name': model.__class__.__name__,
+        'init_args': {},
+        'str': str(model),
+        'repr': repr(model),
+        'modules': [m.__class__.__name__ for m in model.modules()],
+    }
+
+    # 생성자 인자 자동 추출(가능한 경우)
+    if hasattr(model, '__dict__'):
+        for key in ['in_ch', 'base_ch', 'num_classes', 'out_ch']:
+            if hasattr(model, key):
+                model_info['init_args'][key] = getattr(model, key)
+
+    # kwargs 처리
+    extra_info = {}
+    if kwargs is not None:
+        if isinstance(kwargs, str):
+            extra_info = json.loads(kwargs)
+        elif isinstance(kwargs, dict):
+            extra_info = kwargs
+
+    model_info.update(extra_info)
+
+    # 저장할 dict 구성
+    save_dict = {
+        'model_state': model.state_dict(),
+        'class_name': model.__class__.__name__,
+        'model_info': model_info,
+    }
+
+    save_path = os.path.join(path, f"{pth_name}.pth")
+    torch.save(save_dict, save_path)
+    return save_path
+
+def load_model_dict(path, pth_name=None):
+    """
+    save_model_dict로 저장한 모델을 불러오는 함수
+    반환값: (model_state, model_info)
+    """
+    import torch
+    load_path = path
+    if pth_name is not None:
+        load_path = os.path.join(path, f"{pth_name}.pth")
+    checkpoint = torch.load(load_path, map_location='cpu', weights_only=False)  # <-- 여기 추가
+    model_state = checkpoint.get('model_state')
+    model_info = checkpoint.get('model_info')
+    model_info['file_name'] = os.path.basename(load_path)
+    return model_state, model_info
+
+################################################################################################################
+
+def search_pth_files(base_path):
+    """
+    입력된 경로의 하위 폴더들에서 pth 파일들을 검색
+    """
+    pth_files = []
+
+    if not os.path.exists(base_path):
+        print(f"경로가 존재하지 않습니다: {base_path}")
+        return pth_files
+
+    print(f"pth 파일 검색 시작: {base_path}")
+
+    # 하위 폴더들을 순회하며 pth 파일 검색
+    for root, dirs, files in os.walk(base_path):
+        for file in files:
+            if file.endswith('.pth'):
+                pth_path = os.path.join(root, file)
+                pth_files.append(pth_path)
+
+    # 결과 정리 및 출력
+    if pth_files:
+        print(f"\n발견된 pth 파일들 ({len(pth_files)}개):")
+        for i, pth_file in enumerate(pth_files, 1):
+            # 상대 경로로 표시 (base_path 기준)
+            rel_path = os.path.relpath(pth_file, base_path)
+            print(f" {i:2d}. {rel_path}")
+    else:
+        print("pth 파일을 찾을 수 없습니다.")
+
+    return pth_files
+
+
+def save_datasets_as_json(save_datasets, dataset_path):
+    """데이터셋을 JSON 형태로 저장"""
+    print(f"JSON 형태로 데이터셋 저장 중: {dataset_path}")
+    
+    # numpy array를 list로 변환
+    json_data = {}
+    for split in ['train', 'validation', 'test']:
+        json_data[split] = {
+            'text': save_datasets[split]['text'].tolist() if isinstance(save_datasets[split]['text'], np.ndarray) else list(save_datasets[split]['text']),
+            'target': save_datasets[split]['target'].tolist() if isinstance(save_datasets[split]['target'], np.ndarray) else list(save_datasets[split]['target'])
+        }
+    
+    json_data['target_names'] = list(save_datasets['target_names'])
+    
+    # JSON으로 저장
+    with open(dataset_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"저장 완료: {dataset_path}")
+
+def load_datasets_from_json(dataset_path):
+    """JSON에서 데이터셋 로드"""
+    print(f"JSON에서 데이터셋 로드: {dataset_path}")
+    
+    with open(dataset_path, 'r', encoding='utf-8') as f:
+        json_data = json.load(f)
+    
+    # numpy array로 변환
+    load_datasets = {}
+    for split in ['train', 'validation', 'test']:
+        load_datasets[split] = {
+            'text': np.array(json_data[split]['text']),
+            'target': np.array(json_data[split]['target'])
+        }
+    
+    load_datasets['target_names'] = json_data['target_names']
+    
+    print("로드 완료")
+    return load_datasets
+
 ################################################################################################################
 def create_tqdm(iterable=None, total=None, desc="Progress", **kwargs):
     """
@@ -1017,58 +1073,67 @@ def create_or_reset_tqdm(pbar=None, iterable=None, total=None, desc="Progress", 
         # 기존 것 재설정
         return reset_tqdm(pbar, iterable=iterable, total=total, desc=desc, **kwargs)
 
-################################################################################################################
+##########################################################################################################
 
-class ShortLevelFormatter(logging.Formatter):
-    """로그 레벨을 1글자로 축약 (DEBUG→D, INFO→I, WARNING→W, ERROR→E, CRITICAL→C)"""
+def unzip(zipfile_list, remove_zip=False):
+    import zipfile
+    unzip_paths = []
+    for zip_path in zipfile_list:
+        if os.path.exists(zip_path) and os.path.isfile(zip_path):
+            extract_dir = zip_path + ".unzip"
+            unzip_paths.append(extract_dir)
+            if not os.path.exists(extract_dir):
+                os.makedirs(extract_dir, exist_ok=True)
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    members = zip_ref.namelist()
+                    for member in tqdm(members, desc=f"압축 해제 중: {os.path.basename(zip_path)}", unit="file"):
+                        zip_ref.extract(member, extract_dir)
+                print(f"압축 해제 완료: {extract_dir}")
+            else:
+                print(f"이미 압축 해제됨: {extract_dir}")
+            try:
+                if remove_zip:
+                    os.remove(zip_path)
+            except FileNotFoundError as e:
+                print(f"파일이 없음 {e} : {zip_path}")
+        else:
+            print(f"존재하지 않은 파일: {zip_path}")
+    return unzip_paths
 
-    LEVEL_MAP = {
-        'DEBUG': 'D',
-        'INFO': 'I',
-        'WARNING': 'W',
-        'ERROR': 'E',
-        'CRITICAL': 'C'
-    }
-    kst = pytz.timezone('Asia/Seoul')
+from typing import List
+def zip_progress(files: List[str], zip_path: str, arc_names: List[str] = None, compression = None) -> str:
+    """파일 목록을 ZIP으로 압축하면서 tqdm 프로그레스바 표시."""
+    from pathlib import Path
+    import zipfile
+    try:
+        pbar_kwargs = get_tqdm_kwargs() or {}
+    except Exception:
+        pbar_kwargs = {}
 
-    def format(self, record):
-        # 원본 레벨명을 약자로 교체
-        record.levelname = self.LEVEL_MAP.get(record.levelname, record.levelname)
-        return super().format(record)
+    if compression is None:
+        compression = zipfile.ZIP_STORED
 
-    def formatTime(self, record, datefmt=None):
-        """record.created를 KST로 변환해 포맷된 문자열 반환"""
-        ct = datetime.fromtimestamp(record.created, tz=self.kst)
-        if datefmt:
-            return ct.strftime(datefmt)
-        return ct.strftime('%Y-%m-%d %H:%M:%S')
-    
-if IS_COLAB:
-    # Colab: 기존 핸들러 제거 후 재설정
-    logger = logging.getLogger()
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
-    
-    handler = logging.StreamHandler()
-    handler.setFormatter(ShortLevelFormatter(
-        '%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    ))
-    logger.addHandler(handler)
-else:
-    logging.basicConfig(
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    logger = logging.getLogger()
-    
-    # 기존 핸들러의 Formatter 교체
-    for handler in logging.getLogger().handlers:
-        handler.setFormatter(ShortLevelFormatter(
-            '%(asctime)s [%(levelname)s] %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        ))
+    paths = [Path(p) for p in files]
+    exist_paths = [p for p in paths if p.exists()]
+    if not exist_paths:
+        print("zip_progress: 압축할 유효한 파일이 없습니다.")
+        return None
 
-# logger.setLevel(logging.DEBUG)
-################################################################################################################
+    try:
+        with zipfile.ZipFile(zip_path, 'w', compression) as zf:
+            with tqdm(total=len(exist_paths), desc="Zipping", **pbar_kwargs) as pbar:
+                for i, p in enumerate(exist_paths):
+                    arc = None
+                    if arc_names and i < len(arc_names):
+                        arc = arc_names[i]
+                    else:
+                        arc = p.name
+                    zf.write(str(p), arc)
+                    pbar.update(1)
+        return zip_path
+    except Exception as e:
+        print(f"zip_progress 실패: {e}")
+        return None
+##########################################################################################################
+
 print('helper_utils.py loaded')
