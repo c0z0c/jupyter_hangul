@@ -23,7 +23,8 @@ from tqdm.notebook import tqdm
 import numpy as np  # 수치 연산
 import logging
 import pytz
-
+from typing import Union, List
+import zipfile
 
 ################################################################################################################
 
@@ -682,7 +683,7 @@ def get_path_modeling_release(add_path = None):
     return path
     
 ################################################################################################################
-def download_gdrive_file(url, output_path, ignore=True):
+def download_gdrive_file(url : str, output_path: str, ignore=True):
     try:
         import gdown
     except ImportError:
@@ -712,7 +713,7 @@ def download_gdrive_file(url, output_path, ignore=True):
 
     gdown.download(f"https://drive.google.com/uc?id={file_id}", output_path, quiet=False)
 
-def download_http(url, output_path, ignore=True):
+def download_http(url: str, output_path: str, ignore=True):
     """
     HTTP 파일 다운로드 함수 (진행률 표시)
     url: 다운로드할 파일 URL
@@ -1100,40 +1101,58 @@ def unzip(zipfile_list, remove_zip=False):
             print(f"존재하지 않은 파일: {zip_path}")
     return unzip_paths
 
-from typing import List
-def zip_progress(files: List[str], zip_path: str, arc_names: List[str] = None, compression = None) -> str:
-    """파일 목록을 ZIP으로 압축하면서 tqdm 프로그레스바 표시."""
-    from pathlib import Path
-    import zipfile
-    try:
-        pbar_kwargs = get_tqdm_kwargs() or {}
-    except Exception:
-        pbar_kwargs = {}
+def zip_progress(input_path: Union[str, Path], zip_path: str, compression=None) -> str:
+    """
+    파일 또는 폴더를 ZIP으로 압축하면서 tqdm 프로그레스바를 표시합니다.
+    압축 파일 내에 상대 경로를 유지합니다.
+
+    Args:
+        input_path (Union[str, Path]): 압축할 파일 또는 폴더 경로.
+        zip_path (str): 생성할 ZIP 파일 경로.
+        compression (int, optional): 압축 방식. 기본값은 `zipfile.ZIP_STORED`이며, 
+                                      `zipfile.ZIP_DEFLATED`를 사용할 수 있습니다.
+
+    Returns:
+        str: 생성된 ZIP 파일 경로. 실패 시 None을 반환합니다.
+
+    Raises:
+        Exception: 압축 중 오류가 발생하면 예외 메시지를 출력합니다.
+
+    Example:
+        >>> zip_progress3("my_folder", "archive.zip")
+        Zipping: 100%|█████████████████████████████████████████████████████████████| 10/10 [00:00<00:00, 100.00file/s]
+        'archive.zip'
+    """
+    input_path = Path(input_path)
+    if not input_path.exists():
+        print(f"압축할 대상이 존재하지 않습니다: {input_path}")
+        return None
 
     if compression is None:
-        compression = zipfile.ZIP_STORED
+        compression = zipfile.ZIP_DEFLATED
 
-    paths = [Path(p) for p in files]
-    exist_paths = [p for p in paths if p.exists()]
-    if not exist_paths:
-        print("zip_progress: 압축할 유효한 파일이 없습니다.")
+    # 압축 대상 파일 목록 생성
+    if input_path.is_dir():
+        files = [f for f in input_path.rglob('*') if f.is_file()]
+    else:
+        files = [input_path]
+
+    if not files:
+        print("압축할 파일이 없습니다.")
         return None
 
-    try:
-        with zipfile.ZipFile(zip_path, 'w', compression) as zf:
-            with tqdm(total=len(exist_paths), desc="Zipping", **pbar_kwargs) as pbar:
-                for i, p in enumerate(exist_paths):
-                    arc = None
-                    if arc_names and i < len(arc_names):
-                        arc = arc_names[i]
-                    else:
-                        arc = p.name
-                    zf.write(str(p), arc)
-                    pbar.update(1)
-        return zip_path
-    except Exception as e:
-        print(f"zip_progress 실패: {e}")
-        return None
+    # ZIP 파일 생성
+    with zipfile.ZipFile(zip_path, 'w', compression) as zf:
+        with tqdm(total=len(files), desc="Zipping", unit="file") as pbar:
+            for file in files:
+                # 압축 파일 내 상대 경로 계산
+                arcname = file.relative_to(input_path.parent if input_path.is_file() else input_path)
+                zf.write(file, arcname)
+                pbar.update(1)
+
+    return zip_path
+
+
 ##########################################################################################################
 
 print('helper_utils.py loaded')
