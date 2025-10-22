@@ -682,6 +682,24 @@ def get_path_modeling_release(add_path = None):
         path = os.path.join(path,add_path)
     return path
     
+def get_path_temp(add_path = None):
+    """임시 경로를 가져옵니다.
+
+    Args:
+        add_path (str, optional): 추가 경로를 지정합니다. Defaults to None.
+
+    Returns:
+        str: 임시 경로 문자열
+    """
+    if IS_COLAB:
+        temp_path = r"/content/temp"
+    else:
+        drive = os.path.splitdrive(os.getcwd())[0]  # ex: 'D:'
+        temp_path = os.path.join(drive + os.sep, 'temp')
+    if add_path is not None:
+        temp_path = os.path.join(temp_path,add_path)
+    return temp_path
+
 ################################################################################################################
 def download_gdrive_file(url : str, output_path: str, ignore=True):
     try:
