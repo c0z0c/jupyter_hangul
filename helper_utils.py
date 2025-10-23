@@ -23,7 +23,7 @@ from tqdm.notebook import tqdm
 import numpy as np  # 수치 연산
 import logging
 import pytz
-from typing import Union, List
+from typing import Union, List, Optional
 import zipfile
 import unicodedata
 
