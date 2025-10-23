@@ -25,6 +25,7 @@ import logging
 import pytz
 from typing import Union, List
 import zipfile
+import unicodedata
 
 ################################################################################################################
 
@@ -1094,30 +1095,115 @@ def create_or_reset_tqdm(pbar=None, iterable=None, total=None, desc="Progress", 
 
 ##########################################################################################################
 
-def unzip(zipfile_list, remove_zip=False):
-    import zipfile
-    unzip_paths = []
-    for zip_path in zipfile_list:
-        if os.path.exists(zip_path) and os.path.isfile(zip_path):
-            extract_dir = zip_path + ".unzip"
-            unzip_paths.append(extract_dir)
-            if not os.path.exists(extract_dir):
-                os.makedirs(extract_dir, exist_ok=True)
-                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                    members = zip_ref.namelist()
-                    for member in tqdm(members, desc=f"압축 해제 중: {os.path.basename(zip_path)}", unit="file"):
-                        zip_ref.extract(member, extract_dir)
-                print(f"압축 해제 완료: {extract_dir}")
-            else:
-                print(f"이미 압축 해제됨: {extract_dir}")
+def unzip(zipfile_list, remove_zip=False, skip_root=False, normalize_nfc: bool = True, force_utf8: bool = False):
+    def _try_force_utf8(name: str) -> str:
+        """CP437→UTF-8/CP949 재해석 (개선)"""
+        candidates = [
+            ('utf-8', 'strict'),      # UTF-8 ZIP
+            ('cp949', 'ignore'),      # 한국 레거시
+            ('euc_kr', 'ignore'),     # 구형 리눅스
+            ('cp437', 'replace'),     # DOS 폴백
+        ]
+        for enc, errors in candidates:
             try:
-                if remove_zip:
-                    os.remove(zip_path)
-            except FileNotFoundError as e:
-                print(f"파일이 없음 {e} : {zip_path}")
-        else:
+                return name.encode('latin1').decode(enc, errors=errors)
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                continue
+        return name  # 실패 시 원본 반환
+
+    unzip_paths = []
+
+    for zip_path in zipfile_list:
+        if not (os.path.exists(zip_path) and os.path.isfile(zip_path)):
             print(f"존재하지 않은 파일: {zip_path}")
+            continue
+
+        extract_dir = zip_path + ".unzip"
+        unzip_paths.append(extract_dir)
+
+        if os.path.exists(extract_dir):
+            print(f"이미 압축 해제됨: {extract_dir}")
+            continue
+
+        os.makedirs(extract_dir, exist_ok=True)
+
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            members = zip_ref.namelist()
+
+            # ========== skip_root 로직 (수정) ==========
+            skip_prefix = ""
+
+            if skip_root and members:
+                # ZIP 내부 경로는 항상 POSIX 형식('/')이므로 '/'로 분할
+                # __MACOSX 같은 메타파일 제외하고 최상위 디렉토리 추출
+                top_level_dirs = set()
+                for m in members:
+                    if m.startswith('__MACOSX') or m.startswith('.'):
+                        continue
+                    parts = m.split('/', 1)  # POSIX 구분자 사용
+                    if len(parts) > 0 and parts[0]:
+                        top_level_dirs.add(parts[0])
+
+                # 최상위 디렉토리가 1개만 존재하면 스킵 대상
+                if len(top_level_dirs) == 1:
+                    skip_prefix = list(top_level_dirs)[0] + '/'
+                    print(f"최상위 디렉토리 스킵: {skip_prefix.rstrip('/')}")
+
+            # ========== 압축 해제 ==========
+            for member_name_orig in tqdm(members, desc=f"압축 해제 중: {os.path.basename(zip_path)}", unit="file"):
+
+                # 메타파일 건너뛰기
+                if member_name_orig.startswith('__MACOSX') or member_name_orig.startswith('.'):
+                    continue
+
+                member_name_to_use = member_name_orig
+
+                # 1. force_utf8 옵션이 켜져있으면 재해석 시도
+                if force_utf8:
+                    member_name_to_use = _try_force_utf8(member_name_orig)
+
+                # 2. NFD → NFC 변환 (옵션)
+                if normalize_nfc:
+                    member_name_nfc = unicodedata.normalize('NFC', member_name_to_use)
+                else:
+                    member_name_nfc = member_name_to_use
+
+                # 3. 최상위 디렉토리 스킵 (skip_prefix는 원본 멤버 기준)
+                if skip_prefix and member_name_orig.startswith(skip_prefix):
+                    relative_path = member_name_orig[len(skip_prefix):]
+                    if not relative_path:
+                        continue
+                    if force_utf8:
+                        relative_path = _try_force_utf8(relative_path)
+                    relative_path_nfc = unicodedata.normalize('NFC', relative_path) if normalize_nfc else relative_path
+                else:
+                    relative_path_nfc = member_name_nfc
+
+                # 4. 추출 경로 (OS 구분자로 변환)
+                target_path = os.path.join(extract_dir, relative_path_nfc.replace('/', os.sep))
+
+                # 5. 파일/디렉토리 추출
+                info = zip_ref.getinfo(member_name_orig)
+
+                if info.is_dir():
+                    os.makedirs(target_path, exist_ok=True)
+                else:
+                    # 상위 디렉토리 생성
+                    parent_dir = os.path.dirname(target_path)
+                    if parent_dir:
+                        os.makedirs(parent_dir, exist_ok=True)
+
+                    # 파일 추출
+                    with zip_ref.open(member_name_orig) as source, open(target_path, 'wb') as target:
+                        target.write(source.read())
+
+
+            print(f"\n압축 해제 완료: {extract_dir}")
+        # 원본 zip 삭제
+        if remove_zip:
+            os.remove(zip_path)
     return unzip_paths
+
 
 def zip_progress(input_path: Union[str, Path], zip_path: str, compression=None) -> str:
     """
