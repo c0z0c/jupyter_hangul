@@ -764,32 +764,65 @@ def download_http(url: str, output_path: str, ignore=True):
 
 ################################################################################################################
 
-def print_dir_tree(root, indent=""):
+def print_dir_tree(root: str, indent: str = "", max_file_list: Optional[int] = None, max_dir_list: Optional[int] = None):
     """디렉토리 트리를 출력합니다.
 
     Args:
         root (str): 시작 디렉토리 경로
-        max_depth (int, optional): 최대 깊이. Defaults to 2.
         indent (str, optional): 들여쓰기 문자열. Defaults to "".
+        max_file_list (int, optional): 각 디렉토리에서 출력할 최대 파일 수. None이면 전체 출력.
+        max_dir_list (int, optional): 각 디렉토리에서 출력할 최대 하위 디렉토리 수. None이면 전체 출력.
     """
     import os
+
     try:
-        items = os.listdir(root)
+        entries = sorted(os.listdir(root))
     except Exception as e:
         print(indent + f"[Error] {e}")
         return
 
-    img_count = len([f for f in os.listdir(root)])
-    for item in items:
-        path = os.path.join(root, item)
+    # 디렉토리 / 파일 분리 (원본 순서 보존을 위해 sorted 대신 entries 사용하여 세트로 허용 여부 판단)
+    dirs = [e for e in entries if os.path.isdir(os.path.join(root, e))]
+    files = [e for e in entries if not os.path.isdir(os.path.join(root, e))]
+
+    total_dirs = len(dirs)
+    total_files = len(files)
+
+    display_dirs = dirs if max_dir_list is None else dirs[:max_dir_list]
+    display_files = files if max_file_list is None else files[:max_file_list]
+
+    allowed_dirs = set(display_dirs)
+    allowed_files = set(display_files)
+
+    has_more_dirs = (max_dir_list is not None) and (total_dirs > max_dir_list)
+    has_more_files = (max_file_list is not None) and (total_files > max_file_list)
+
+    for entry in entries:
+        path = os.path.join(root, entry)
         if os.path.isdir(path):
-            print(indent + "|-- "+ item)
-            # 이미지 파일 개수만 출력
-            img_count = len([f for f in os.listdir(path)])
-            print(indent + "   "+ f"[데이터파일: {img_count}개]")
-            print_dir_tree(root=path, indent=indent + "   ")
+            if entry not in allowed_dirs:
+                # 스킵된 디렉토리
+                continue
+            print(indent + "|-- " + entry)
+            # 디렉토리 내 파일 개수 출력
+            try:
+                file_count = len([f for f in os.listdir(path)])
+            except Exception:
+                file_count = 0
+            print(indent + "   " + f"[데이터파일: {file_count}개]")
+            # 재귀 호출 시 동일한 제한 전달
+            print_dir_tree(root=path, indent=indent + "   ", max_file_list=max_file_list, max_dir_list=max_dir_list)
         else:
-            print(indent + "|-- "+ item)
+            if entry not in allowed_files:
+                # 스킵된 파일
+                continue
+            print(indent + "|-- " + entry)
+
+    # 생략된 항목이 있으면 표시 (파일/디렉토리 별로 구분하여 표시)
+    if has_more_dirs:
+        print(indent + "   " + "... dirs")
+    if has_more_files:
+        print(indent + "   " + "... files")
             
 
 def print_json_tree(data, indent="", max_depth=4, _depth=0, list_count=2, print_value=True, limit_value_text=100):
