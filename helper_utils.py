@@ -825,76 +825,277 @@ def print_dir_tree(root: str, indent: str = "", max_file_list: Optional[int] = N
         print(indent + "   " + "... files")
             
 
-def print_json_tree(data, indent="", max_depth=4, _depth=0, list_count=2, print_value=True, limit_value_text=100):
+def print_json_tree(data, indent="", max_depth=4, _depth=0, list_count=1, print_value=True, limit_value_text=100):
     """
     JSON 객체를 지정한 단계(max_depth)까지 트리 형태로 출력
-    - list 타입은 3개 이상일 때 개수만 출력
+    - list 타입은 앞/뒤 list_count개수 만큼 출력하고 중간은 "..."로 생략 처리
     - 하위 노드가 값일 경우 key(type) 형태로 출력
     - print_value=True일 때 key(type): 값 형태로 출력
     """
     if _depth > max_depth:
         return
+
     if isinstance(data, dict):
         for key, value in data.items():
             if isinstance(value, (dict, list)):
                 print(f"{indent}|-- {key}")
-                print_json_tree(value, indent + "    ", max_depth, _depth + 1, list_count, print_value)
+                print_json_tree(value, indent + "    ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
             else:
                 if print_value:
-                    print(f"{indent}|-- {key}({type(value).__name__}): {value if len(str(value)) < limit_value_text else f'{str(value)[:30]}...'}")
+                    vstr = str(value)
+                    short = vstr if len(vstr) < limit_value_text else f"{vstr[:30]}..."
+                    print(f"{indent}|-- {key}({type(value).__name__}): {short}")
                 else:
                     print(f"{indent}|-- {key}({type(value).__name__})")
+
     elif isinstance(data, list):
-        if len(data) > list_count:
-            print(f"{indent}|-- [list] ({len(data)} items)")
-        else:
-            for i, item in enumerate(data):
+        n = int(list_count) if list_count is not None else 0
+        L = len(data)
+
+        if L == 0:
+            print(f"{indent}|-- [list] (0 items)")
+            return
+
+        # 리스트가 충분히 길면 앞/뒤 n개만 보여주고 중간 생략
+        if n > 0 and L > 2 * n:
+            print(f"{indent}|-- [list] ({L} items)")
+            # 앞쪽 n개
+            for i in range(0, n):
+                item = data[i]
                 if isinstance(item, (dict, list)):
-                    print(f"{indent}|-- [{i}]")
-                    print_json_tree(item, indent + "    ", max_depth, _depth + 1, list_count, print_value)
+                    print(f"{indent}    |-- [{i}]")
+                    print_json_tree(item, indent + "        ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
                 else:
                     if print_value:
-                        print(f"{indent}|-- [{i}]({type(item).__name__}): {item if len(str(item)) < limit_value_text else f'{str(item)[:30]}...'}")
+                        vstr = str(item)
+                        short = vstr if len(vstr) < limit_value_text else f"{vstr[:30]}..."
+                        print(f"{indent}    |-- [{i}]({type(item).__name__}): {short}")
                     else:
-                        print(f"{indent}|-- [{i}]({type(item).__name__})")
+                        print(f"{indent}    |-- [{i}]({type(item).__name__})")
+
+            # 생략 표시
+            omitted = L - 2 * n
+            print(f"{indent}    |-- ... ({omitted} items omitted)")
+
+            # 뒤쪽 n개
+            for j in range(L - n, L):
+                item = data[j]
+                if isinstance(item, (dict, list)):
+                    print(f"{indent}    |-- [{j}]")
+                    print_json_tree(item, indent + "        ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
+                else:
+                    if print_value:
+                        vstr = str(item)
+                        short = vstr if len(vstr) < limit_value_text else f"{vstr[:30]}..."
+                        print(f"{indent}    |-- [{j}]({type(item).__name__}): {short}")
+                    else:
+                        print(f"{indent}    |-- [{j}]({type(item).__name__})")
+
+        else:
+            # 전체 출력 (list_count가 0 이거나 리스트가 짧은 경우)
+            print(f"{indent}|-- [list] ({L} items)")
+            for i, item in enumerate(data):
+                if isinstance(item, (dict, list)):
+                    print(f"{indent}    |-- [{i}]")
+                    print_json_tree(item, indent + "        ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
+                else:
+                    if print_value:
+                        vstr = str(item)
+                        short = vstr if len(vstr) < limit_value_text else f"{vstr[:30]}..."
+                        print(f"{indent}    |-- [{i}]({type(item).__name__}): {short}")
+                    else:
+                        print(f"{indent}    |-- [{i}]({type(item).__name__})")
     else:
         if print_value:
-            print(f"{indent}{type(data).__name__}: {data if len(str(data)) < limit_value_text else f'{str(data)[:30]}...'}")
+            vstr = str(data)
+            short = vstr if len(vstr) < limit_value_text else f"{vstr[:30]}..."
+            print(f"{indent}{type(data).__name__}: {short}")
         else:
             print(f"{indent}{type(data).__name__}")
 
-def print_dic_tree(dic_data, indent="", max_depth=3, _depth=0):
+def print_dic_tree(dic_data, indent="", max_depth=3, _depth=0, list_count=1, print_value=True, limit_value_text=100):
     """
     PyTorch tensor/딕셔너리/리스트를 git tree 스타일로 출력
+    - max_depth: 출력할 최대 깊이
+    - list_count: 리스트 앞/뒤로 출력할 항목 수 (중간 생략)
+    - print_value: True이면 값도 출력, False이면 타입만 출력
+    - limit_value_text: 값 출력 시 최대 텍스트 길이
     """
-    import torch
-    import numpy as np
 
     if _depth > max_depth:
         return
+    
     if isinstance(dic_data, dict):
         for key, value in dic_data.items():
-            print(f"{indent}├─ {key} [{type(value).__name__}]")
-            print_dic_tree(value, indent + "│  ", max_depth, _depth + 1)
+            if isinstance(value, (dict, list, tuple)):
+                print(f"{indent}├─ {key} [{type(value).__name__}]")
+                print_dic_tree(value, indent + "│  ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
+            elif torch.is_tensor(value):
+                shape = tuple(value.shape)
+                dtype = str(value.dtype)
+                if print_value:
+                    preview = str(value)
+                    preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                    print(f"{indent}├─ {key} [Tensor] shape={shape} dtype={dtype}")
+                    print(f"{indent}│  └─ {preview_str}")
+                else:
+                    print(f"{indent}├─ {key} [Tensor] shape={shape} dtype={dtype}")
+            elif isinstance(value, np.ndarray):
+                shape = value.shape
+                dtype = value.dtype
+                if print_value:
+                    preview = str(value)
+                    preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                    print(f"{indent}├─ {key} [ndarray] shape={shape} dtype={dtype}")
+                    print(f"{indent}│  └─ {preview_str}")
+                else:
+                    print(f"{indent}├─ {key} [ndarray] shape={shape} dtype={dtype}")
+            else:
+                if print_value:
+                    val_str = str(value)
+                    short = val_str[:limit_value_text] + ("..." if len(val_str) > limit_value_text else "")
+                    print(f"{indent}├─ {key} [{type(value).__name__}]: {short}")
+                else:
+                    print(f"{indent}├─ {key} [{type(value).__name__}]")
+    
     elif isinstance(dic_data, (list, tuple)):
-        for i, item in enumerate(dic_data):
-            print(f"{indent}├─ [{i}] [{type(item).__name__}]")
-            print_dic_tree(item, indent + "│  ", max_depth, _depth + 1)
+        n = int(list_count) if list_count is not None else 0
+        L = len(dic_data)
+        
+        if L == 0:
+            print(f"{indent}└─ [{type(dic_data).__name__}] (0 items)")
+            return
+        
+        # 리스트가 충분히 길면 앞/뒤 n개만 보여주고 중간 생략
+        if n > 0 and L > 2 * n:
+            # 앞쪽 n개
+            for i in range(0, n):
+                item = dic_data[i]
+                if isinstance(item, (dict, list, tuple)):
+                    print(f"{indent}├─ [{i}] [{type(item).__name__}]")
+                    print_dic_tree(item, indent + "│  ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
+                elif torch.is_tensor(item):
+                    shape = tuple(item.shape)
+                    dtype = str(item.dtype)
+                    if print_value:
+                        preview = str(item)
+                        preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                        print(f"{indent}├─ [{i}] [Tensor] shape={shape} dtype={dtype}: {preview_str}")
+                    else:
+                        print(f"{indent}├─ [{i}] [Tensor] shape={shape} dtype={dtype}")
+                elif isinstance(item, np.ndarray):
+                    shape = item.shape
+                    dtype = item.dtype
+                    if print_value:
+                        preview = str(item)
+                        preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                        print(f"{indent}├─ [{i}] [ndarray] shape={shape} dtype={dtype}: {preview_str}")
+                    else:
+                        print(f"{indent}├─ [{i}] [ndarray] shape={shape} dtype={dtype}")
+                else:
+                    if print_value:
+                        val_str = str(item)
+                        short = val_str[:limit_value_text] + ("..." if len(val_str) > limit_value_text else "")
+                        print(f"{indent}├─ [{i}] [{type(item).__name__}]: {short}")
+                    else:
+                        print(f"{indent}├─ [{i}] [{type(item).__name__}]")
+            
+            # 생략 표시
+            omitted = L - 2 * n
+            print(f"{indent}├─ ... ({omitted} items omitted)")
+            
+            # 뒤쪽 n개
+            for j in range(L - n, L):
+                item = dic_data[j]
+                if isinstance(item, (dict, list, tuple)):
+                    print(f"{indent}├─ [{j}] [{type(item).__name__}]")
+                    print_dic_tree(item, indent + "│  ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
+                elif torch.is_tensor(item):
+                    shape = tuple(item.shape)
+                    dtype = str(item.dtype)
+                    if print_value:
+                        preview = str(item)
+                        preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                        print(f"{indent}├─ [{j}] [Tensor] shape={shape} dtype={dtype}: {preview_str}")
+                    else:
+                        print(f"{indent}├─ [{j}] [Tensor] shape={shape} dtype={dtype}")
+                elif isinstance(item, np.ndarray):
+                    shape = item.shape
+                    dtype = item.dtype
+                    if print_value:
+                        preview = str(item)
+                        preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                        print(f"{indent}├─ [{j}] [ndarray] shape={shape} dtype={dtype}: {preview_str}")
+                    else:
+                        print(f"{indent}├─ [{j}] [ndarray] shape={shape} dtype={dtype}")
+                else:
+                    if print_value:
+                        val_str = str(item)
+                        short = val_str[:limit_value_text] + ("..." if len(val_str) > limit_value_text else "")
+                        print(f"{indent}├─ [{j}] [{type(item).__name__}]: {short}")
+                    else:
+                        print(f"{indent}├─ [{j}] [{type(item).__name__}]")
+        else:
+            # 전체 출력
+            for i, item in enumerate(dic_data):
+                if isinstance(item, (dict, list, tuple)):
+                    print(f"{indent}├─ [{i}] [{type(item).__name__}]")
+                    print_dic_tree(item, indent + "│  ", max_depth, _depth + 1, list_count, print_value, limit_value_text)
+                elif torch.is_tensor(item):
+                    shape = tuple(item.shape)
+                    dtype = str(item.dtype)
+                    if print_value:
+                        preview = str(item)
+                        preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                        print(f"{indent}├─ [{i}] [Tensor] shape={shape} dtype={dtype}: {preview_str}")
+                    else:
+                        print(f"{indent}├─ [{i}] [Tensor] shape={shape} dtype={dtype}")
+                elif isinstance(item, np.ndarray):
+                    shape = item.shape
+                    dtype = item.dtype
+                    if print_value:
+                        preview = str(item)
+                        preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+                        print(f"{indent}├─ [{i}] [ndarray] shape={shape} dtype={dtype}: {preview_str}")
+                    else:
+                        print(f"{indent}├─ [{i}] [ndarray] shape={shape} dtype={dtype}")
+                else:
+                    if print_value:
+                        val_str = str(item)
+                        short = val_str[:limit_value_text] + ("..." if len(val_str) > limit_value_text else "")
+                        print(f"{indent}├─ [{i}] [{type(item).__name__}]: {short}")
+                    else:
+                        print(f"{indent}├─ [{i}] [{type(item).__name__}]")
+    
     elif torch.is_tensor(dic_data):
         shape = tuple(dic_data.shape)
         dtype = str(dic_data.dtype)
-        preview = str(dic_data)
-        preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
-        print(f"{indent}└─ Tensor shape={shape} dtype={dtype} preview={preview_str}")
+        if print_value:
+            preview = str(dic_data)
+            preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+            print(f"{indent}└─ Tensor shape={shape} dtype={dtype}")
+            print(f"{indent}   {preview_str}")
+        else:
+            print(f"{indent}└─ Tensor shape={shape} dtype={dtype}")
+    
     elif isinstance(dic_data, np.ndarray):
         shape = dic_data.shape
         dtype = dic_data.dtype
-        preview = str(dic_data)
-        preview_str = preview[:80] + ("..." if len(preview) > 80 else "")
-        print(f"{indent}└─ ndarray shape={shape} dtype={dtype} preview={preview_str}")
+        if print_value:
+            preview = str(dic_data)
+            preview_str = preview[:limit_value_text] + ("..." if len(preview) > limit_value_text else "")
+            print(f"{indent}└─ ndarray shape={shape} dtype={dtype}")
+            print(f"{indent}   {preview_str}")
+        else:
+            print(f"{indent}└─ ndarray shape={shape} dtype={dtype}")
+    
     else:
-        val_str = str(dic_data)
-        print(f"{indent}└─ {type(dic_data).__name__}: {val_str[:80]}{'...' if len(val_str)>80 else ''}")
+        if print_value:
+            val_str = str(dic_data)
+            short = val_str[:limit_value_text] + ("..." if len(val_str) > limit_value_text else "")
+            print(f"{indent}└─ {type(dic_data).__name__}: {short}")
+        else:
+            print(f"{indent}└─ {type(dic_data).__name__}")
 
 ################################################################################################################
 
