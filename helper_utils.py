@@ -739,12 +739,18 @@ def download_http(url: str, output_path: str, ignore=True):
     output_path: 저장할 파일 경로
     ignore: True면 기존 파일 삭제 후 다운로드, False면 파일 있으면 건너뜀
     """
+            
     if os.path.exists(output_path):
         if ignore:
             os.remove(output_path)
         else:
             print(f"이미 파일이 존재합니다: {output_path}")
             return output_path
+
+    # 폴더 생성
+    output_dir = os.path.dirname(output_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
 
     response = requests.get(url, stream=True)
     total = int(response.headers.get('content-length', 0))
