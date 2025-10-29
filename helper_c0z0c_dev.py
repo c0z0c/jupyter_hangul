@@ -61,6 +61,7 @@ import sys
 import time
 import json
 import gzip
+import logging
 import shutil
 import pickle
 import hashlib
@@ -69,12 +70,14 @@ import subprocess
 import urllib.request
 from pathlib import Path
 from datetime import datetime
+from enum import Enum
 
 # Third-party imports
 import matplotlib.font_manager
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from typing import Any, Optional, Union, Dict, List
 
 # Environment-specific imports (handled with try/except in functions)
 try:
@@ -91,6 +94,8 @@ try:
 except ImportError:
     IS_COLAB = False
 
+ENABLE_LOGGER = os.environ.get("ENABLE_LOGGER", "True").lower() in ("true", "1", "yes")
+logger = logging.getLogger("helper_c0z0c_dev")
 # =============================================================================
 # CONSTANTS AND GLOBAL VARIABLES
 # =============================================================================
@@ -110,21 +115,127 @@ __is_setup_print_log = False
 # __DEBUG_ON = True
 __DEBUG_ON = False
 
+if ENABLE_LOGGER:
+    logging.basicConfig(level=logging.DEBUG)
+else:
+    if __DEBUG_ON:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
-def _in_colab():
-    """Colab 환경 감지"""
+class LogLevel(Enum):
+    """
+    로그 레벨을 정의하는 Enum 클래스
+    """
+    NONE = 0
+    DEBUG = 1
+    INFO = 2
+    WARNING = 3
+    ERROR = 4
+
+
+def log_print(level: LogLevel, *args: object, **kwargs: Any) -> None:
+    """
+    지정한 로그 레벨에 따라 메시지를 출력합니다.
+    Args:
+        level (LogLevel): 로그 레벨
+        *args: 출력할 메시지
+        **kwargs: 추가 옵션
+    """
+    msg = " ".join(str(a) for a in args)
+    if ENABLE_LOGGER:
+        if level == LogLevel.NONE:
+            print(msg, **kwargs)
+        elif level == LogLevel.DEBUG:
+            logger.debug(msg, **kwargs)
+        elif level == LogLevel.INFO:
+            logger.info(msg, **kwargs)
+        elif level == LogLevel.WARNING:
+            logger.warning(msg, **kwargs)
+        elif level == LogLevel.ERROR:
+            logger.error(msg, **kwargs)
+    else:
+        if level == LogLevel.NONE:
+            print(msg, **kwargs)
+        elif level == LogLevel.DEBUG:
+            print("[DEBUG]", msg, **kwargs)
+        elif level == LogLevel.INFO:
+            print("[INFO]", msg, **kwargs)
+        elif level == LogLevel.WARNING:
+            print("[WARNING]", msg, **kwargs)
+        elif level == LogLevel.ERROR:
+            print("[ERROR]", msg, **kwargs)
+
+def debug_print(*args: object, **kwargs: object) -> None:
+    """
+    디버그 메시지 출력
+    """
+    log_print(LogLevel.DEBUG, *args, **kwargs)
+
+def info_print(*args: object, **kwargs: object) -> None:
+    """
+    정보 메시지 출력
+    """
+    log_print(LogLevel.INFO, *args, **kwargs)
+
+def warning_print(*args: object, **kwargs: object) -> None:
+    """
+    경고 메시지 출력
+    """
+    log_print(LogLevel.WARNING, *args, **kwargs)
+
+def error_print(*args: object, **kwargs: object) -> None:
+    """
+    에러 메시지 출력
+    """
+    log_print(LogLevel.ERROR, *args, **kwargs)
+
+def _in_colab() -> bool:
+    """Colab 환경 감지.
+    
+    Returns
+    -------
+    bool
+        Google Colab 환경이면 True, 그 외 환경이면 False.
+    """
     return IS_COLAB
 
-def _get_text_width(text):
-    """텍스트 폭 계산 (한글 2칸, 영문 1칸)"""
+def _get_text_width(text: Any) -> int:
+    """텍스트 폭 계산 (한글 2칸, 영문 1칸).
+    
+    Parameters
+    ----------
+    text : Any
+        폭을 계산할 텍스트. None이면 0 반환.
+    
+    Returns
+    -------
+    int
+        텍스트의 표시 폭. 한글은 2칸, 영문/숫자는 1칸으로 계산.
+    """
     if text is None:
         return 0
     return sum(2 if ord(char) >= 0x1100 else 1 for char in str(text))
 
-def _format_value(value):
-    """값을 포맷팅합니다. 실수형은 소수점 이하 4자리로 반올림"""
+def _format_value(value: Any) -> str:
+    """값을 포맷팅합니다.
+    
+    실수형은 소수점 이하 4자리로 반올림하고, 정수형은 그대로 표시.
+    배열이나 시리즈는 문자열로 변환.
+    
+    Parameters
+    ----------
+    value : Any
+        포맷팅할 값.
+    
+    Returns
+    -------
+    str
+        포맷팅된 값의 문자열 표현.
+    """
     try:
         # 배열이나 시리즈인 경우 문자열로 변환
         if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)):
@@ -143,8 +254,22 @@ def _format_value(value):
         # 예외 발생 시 안전하게 문자열로 변환
         return str(value)
 
-def font_download():
-    """폰트를 다운로드하거나 설치합니다."""
+def font_download() -> bool:
+    """폰트를 다운로드하거나 설치합니다.
+    
+    Colab 환경에서는 나눔 폰트를 시스템에 설치하고,
+    로컬 환경에서는 GitHub에서 나눔고딕 폰트를 다운로드합니다.
+    
+    Returns
+    -------
+    bool
+        폰트 다운로드/설치 성공 여부.
+    
+    Notes
+    -----
+    - Colab: `fonts-nanum` 패키지를 apt-get으로 설치
+    - 로컬: NanumGothic.ttf 파일을 fonts 폴더에 다운로드
+    """
     global __font_path
     
     # matplotlib 경고 억제
@@ -185,8 +310,16 @@ def font_download():
                 print("🔽 로컬에 나눔 폰트 다운로드 완료")
         return True
 
-def _colab_font_reinstall():
-    """Colab에서 폰트 재설치"""
+def _colab_font_reinstall() -> None:
+    """Colab에서 폰트 재설치.
+    
+    폰트 관련 문제가 발생했을 때 호출되며,
+    캐시를 정리하고 폰트 패키지를 재설치한 후 커널을 재시작합니다.
+    
+    Notes
+    -----
+    이 함수는 프로세스를 강제 종료(os.kill)하므로 주의해서 사용해야 합니다.
+    """
     # matplotlib 경고 억제
     warnings.filterwarnings(action='ignore')
     
@@ -203,8 +336,23 @@ def _colab_font_reinstall():
     except Exception:
         pass
 
-def reset_matplotlib():
-    """matplotlib 완전 리셋 (NumPy 호환성 개선)"""
+def reset_matplotlib() -> Any:
+    """matplotlib 완전 리셋 (NumPy 호환성 개선).
+    
+    matplotlib 모듈을 완전히 리로드하고 한글 폰트를 설정합니다.
+    NumPy 2.0+ 호환성을 고려한 안전한 폰트 설정을 수행합니다.
+    
+    Returns
+    -------
+    matplotlib.pyplot
+        리셋되고 한글 폰트가 설정된 pyplot 모듈.
+    
+    Notes
+    -----
+    - Colab 환경: NanumBarunGothic 폰트 사용
+    - 로컬 환경: NanumGothic 또는 시스템에 설치된 한글 폰트 사용
+    - IPython 환경에서는 전역으로 plt 객체를 등록
+    """
     # matplotlib 모듈들을 sys.modules에서 제거
     
     if __DEBUG_ON:
@@ -275,8 +423,22 @@ def reset_matplotlib():
     
     return plt
 
-def load_font():
-    """폰트를 로딩하고 설정합니다."""
+def load_font() -> bool:
+    """폰트를 로딩하고 설정합니다.
+    
+    환경에 따라 적절한 한글 폰트를 로딩하고 matplotlib에 설정합니다.
+    
+    Returns
+    -------
+    bool
+        폰트 로딩 성공 여부.
+    
+    Notes
+    -----
+    - Colab 환경: Google Drive 마운트 시도 후 나눔 폰트 설정
+    - 로컬 환경: 다운로드한 NanumGothic.ttf 사용
+    - 폰트 설정 실패 시 자동으로 재설치 시도
+    """
     global __font_path, is_colab
 
     try:
@@ -350,26 +512,26 @@ pd.set_option("display.max_columns", 100)
 # FILE I/O FUNCTIONS
 # =============================================================================
 
-def pd_read_csv(filepath_or_buffer, **kwargs):
-    """
-    Colab/로컬 환경에 맞춰 CSV 파일을 읽어옵니다.
+def pd_read_csv(filepath_or_buffer: Any, **kwargs: Any) -> Optional[pd.DataFrame]:
+    """Colab/로컬 환경에 맞춰 CSV 파일을 읽어옵니다.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     filepath_or_buffer : str, path object, file-like object
         읽어올 파일 경로, URL, 파일 객체 등 (pd.read_csv와 동일)
         - str 타입이고 로컬 파일 경로일 경우: Colab 환경에서 자동으로 경로 변환
         - URL (http://, https://, ftp://, file://): 그대로 pd.read_csv에 전달
         - 다른 타입일 경우: 그대로 pd.read_csv에 전달
     **kwargs : dict
-        pd.read_csv의 추가 매개변수들
+        pd.read_csv의 추가 매개변수들.
     
-    Returns:
+    Returns
+    -------
+    pd.DataFrame or None
+        읽어온 데이터프레임. 실패 시 None 반환.
+    
+    Examples
     --------
-    pandas.DataFrame : 읽어온 데이터프레임
-    
-    Examples:
-    ---------
     >>> # 로컬 파일 (환경별 자동 변환)
     >>> df = helper.pd_read_csv('data.csv')
     >>> 
@@ -404,8 +566,27 @@ def pd_read_csv(filepath_or_buffer, **kwargs):
             print(f"❌ 데이터 읽기 실패: {str(e)}")
             return None
 
-def dir_start(obj, cmd):
-    """라이브러리 도움말을 검색합니다."""
+def dir_start(obj: Any, cmd: str) -> None:
+    """라이브러리 도움말을 검색합니다.
+    
+    객체의 속성 중 특정 문자열로 시작하는 것들을 출력합니다.
+    
+    Parameters
+    ----------
+    obj : Any
+        검색할 객체.
+    cmd : str
+        검색할 접두사 문자열.
+    
+    Examples
+    --------
+    >>> import pandas as pd
+    >>> dir_start(pd, 'read')  # 'read'로 시작하는 pandas 함수들
+    read_clipboard
+    read_csv
+    read_excel
+    ...
+    """
     print('def dir_start(obj, cmd):')
     print('  for c in [att for att in dir(obj) if att.startswith(cmd)]:')
     print('    print(f"{c}")')
@@ -413,12 +594,23 @@ def dir_start(obj, cmd):
     for c in [att for att in dir(obj) if att.startswith(cmd)]:
         print(f"{c}")
 
-def set_pd_root_base(subdir=None):
-    """
-    pd_root의 기본 경로를 설정합니다. 프로그램 실행 중 지속적으로 영향을 줍니다.
-    - subdir이 None이면: Colab은 /content/drive/MyDrive, Jupyter는 현재 폴더
-    - subdir이 문자열이면: Colab은 /content/drive/MyDrive/subdir, Jupyter는 ./subdir
-    - subdir이 '/'로 시작하면: Colab은 /content/drive/MyDrive/ + subdir, Jupyter는 . + subdir
+def set_pd_root_base(subdir: Optional[str] = None) -> None:
+    """pd_root의 기본 경로를 설정합니다.
+    
+    프로그램 실행 중 지속적으로 영향을 주는 전역 설정입니다.
+    
+    Parameters
+    ----------
+    subdir : str, optional
+        하위 디렉토리 경로.
+        - None: Colab은 /content/drive/MyDrive, Jupyter는 현재 폴더
+        - 문자열: Colab은 /content/drive/MyDrive/subdir, Jupyter는 ./subdir
+        - '/'로 시작: Colab은 /content/drive/MyDrive/ + subdir, Jupyter는 . + subdir
+    
+    Examples
+    --------
+    >>> set_pd_root_base('my_project')  # ./my_project 또는 MyDrive/my_project
+    >>> set_pd_root_base('/data')       # ./data 또는 MyDrive/data
     """
     if _in_colab():
         base = "/content/drive/MyDrive"
@@ -437,10 +629,27 @@ def set_pd_root_base(subdir=None):
         else:
             __pd_root_base = os.path.join(base, subdir)
 
-def pd_root(commit_dir=None):
-    """
-    pandas commit 시스템의 기본 경로를 반환합니다.
-    commit_dir이 지정되면 해당 경로를, 없으면 pd_root_base를 반환합니다.
+def pd_root(commit_dir: Optional[str] = None) -> str:
+    """pandas commit 시스템의 기본 경로를 반환합니다.
+    
+    Parameters
+    ----------
+    commit_dir : str, optional
+        지정된 커밋 디렉토리 경로. None이면 기본 경로 반환.
+    
+    Returns
+    -------
+    str
+        커밋 시스템의 기본 경로 (절대 경로).
+        - Colab: /content/drive/MyDrive 또는 설정된 하위 디렉토리
+        - 로컬: 현재 디렉토리 또는 설정된 하위 디렉토리
+    
+    Examples
+    --------
+    >>> pd_root()  # 기본 경로
+    '/content/drive/MyDrive' or '.'
+    >>> pd_root('/tmp')  # 특정 경로 지정
+    '/tmp'
     """
     if commit_dir is not None:
         return os.path.abspath(commit_dir)
@@ -452,8 +661,19 @@ def pd_root(commit_dir=None):
     else:
         return os.path.abspath(".")
 
-def _load_commit_meta(commit_dir=None):
-    """커밋 메타데이터를 로드합니다."""
+def _load_commit_meta(commit_dir: Optional[str] = None) -> List[Dict[str, str]]:
+    """커밋 메타데이터를 로드합니다.
+    
+    Parameters
+    ----------
+    commit_dir : str, optional
+        커밋 디렉토리 경로.
+    
+    Returns
+    -------
+    List[Dict[str, str]]
+        커밋 메타데이터 리스트. 각 항목은 hash, datetime, msg, file 키를 포함하는 딕셔너리.
+    """
     meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), __COMMIT_META_FILE)
     if os.path.exists(meta_file):
         try:
@@ -463,15 +683,36 @@ def _load_commit_meta(commit_dir=None):
             return []
     return []
 
-def _save_commit_meta(meta, commit_dir=None):
-    """커밋 메타데이터를 저장합니다."""
+def _save_commit_meta(meta: List[Dict[str, str]], commit_dir: Optional[str] = None) -> None:
+    """커밋 메타데이터를 저장합니다.
+    
+    Parameters
+    ----------
+    meta : List[Dict[str, str]]
+        저장할 커밋 메타데이터 리스트.
+    commit_dir : str, optional
+        커밋 디렉토리 경로.
+    """
     meta_file = os.path.join(os.path.join(pd_root(commit_dir), ".commit_pandas"), __COMMIT_META_FILE)
     os.makedirs(os.path.dirname(meta_file), exist_ok=True)
     with open(meta_file, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
 
-def _generate_commit_hash(dt, msg):
-    """커밋 해시를 생성합니다."""
+def _generate_commit_hash(dt: datetime, msg: str) -> str:
+    """커밋 해시를 생성합니다.
+    
+    Parameters
+    ----------
+    dt : datetime
+        커밋 시간.
+    msg : str
+        커밋 메시지.
+    
+    Returns
+    -------
+    str
+        12자리 MD5 해시 문자열.
+    """
     base = f"{dt.strftime('%Y%m%d_%H%M%S')}_{msg}"
     return hashlib.md5(base.encode("utf-8")).hexdigest()[:12]
 
@@ -480,8 +721,19 @@ def _generate_commit_hash(dt, msg):
 # PANDAS EXTENSION FUNCTIONS
 # =============================================================================
 
-def set_pandas_extension():
-    """pandas DataFrame/Series에 한글 컬럼 설명 기능을 추가합니다."""
+def set_pandas_extension() -> None:
+    """pandas DataFrame/Series에 한글 컬럼 설명 기능을 추가합니다.
+    
+    다음 기능들을 DataFrame과 Series에 동적으로 바인딩합니다:
+    - 컬럼 설명 관리: set_head_att, get_head_att, remove_head_att, clear_head_att
+    - 컬럼 세트 관리: set_head_ext, set_head_column, get_head_ext, list_head_ext
+    - 한글 출력: head_att (DataFrame/Series별 구현)
+    - 커밋 시스템: commit, checkout, commit_list, commit_rm, commit_has
+    
+    Notes
+    -----
+    이 함수는 setup()에서 자동으로 호출되므로 직접 호출할 필요가 없습니다.
+    """
     # 기본 기능
     for cls in [pd.DataFrame, pd.Series]:
         setattr(cls, "set_head_att", set_head_att)
@@ -530,8 +782,21 @@ def set_pandas_extension():
 # FONT MANAGEMENT FUNCTIONS
 # =============================================================================
 
-def _check_numpy_compatibility():
-    """NumPy 버전 호환성 체크"""
+def _check_numpy_compatibility() -> bool:
+    """NumPy 버전 호환성 체크.
+    
+    NumPy 버전을 확인하고 호환성 정보를 출력합니다.
+    
+    Returns
+    -------
+    bool
+        버전 체크 성공 여부.
+    
+    Notes
+    -----
+    - NumPy 2.0+: 호환성 모드 메시지 출력
+    - NumPy 1.20 미만: 구 버전 경고 메시지 출력
+    """
     try:
         major_version = int(np.__version__.split('.')[0])
         minor_version = int(np.__version__.split('.')[1])
@@ -549,8 +814,26 @@ def _check_numpy_compatibility():
 # =============================================================================
 # MAIN SETUP FUNCTION
 # =============================================================================
-def setup():
-    """한번에 모든 설정 완료"""
+def setup() -> None:
+    """한번에 모든 설정 완료.
+    
+    다음 기능들을 자동으로 설정합니다:
+    - 한글 폰트 다운로드/설치 및 로딩
+    - matplotlib 전역 등록
+    - pandas 확장 기능 설정
+    - 캐시 시스템 초기화
+    
+    Notes
+    -----
+    - 중복 호출 방지: 2초 이내 재호출 시 메시지 출력 생략
+    - Windows 환경: UTF-8 인코딩 자동 설정
+    - Colab/로컬 환경 자동 감지
+    
+    Examples
+    --------
+    >>> import helper_c0z0c_dev as helper
+    >>> helper.setup()  # 모든 설정 자동 완료
+    """
     global __pd_root_base
     global __last_setup_time
     global __is_setup_print_log
@@ -619,49 +902,112 @@ def setup():
 
 # pandas commit 시스템 DataFrame 메소드 wrappers
 
-def _df_commit(self, msg, commit_dir=None):
-    """
-    DataFrame의 현재 상태를 커밋합니다.
-    사용법:
-        df.commit("커밋 메시지")
+def _df_commit(self, msg: str, commit_dir: Optional[str] = None) -> pd.DataFrame:
+    """DataFrame의 현재 상태를 커밋합니다.
+    
+    Parameters
+    ----------
+    msg : str
+        커밋 메시지.
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        입력받은 DataFrame을 그대로 반환.
+    
+    Examples
+    --------
+    >>> df.commit("데이터 전처리 완료")
     """
     return pd_commit(self, msg, commit_dir)
 
 
 
 @classmethod
-def _df_checkout(cls, idx_or_hash, commit_dir=None):
-    """
-    DataFrame 커밋 기록에서 특정 커밋을 체크아웃합니다.
-    사용법:
-        pd.DataFrame.checkout(0)
+def _df_checkout(cls, idx_or_hash: Union[int, str], commit_dir: Optional[str] = None) -> pd.DataFrame:
+    """DataFrame 커밋 기록에서 특정 커밋을 체크아웃합니다.
+    
+    Parameters
+    ----------
+    idx_or_hash : int or str
+        커밋 순서 번호, 해시, 날짜, 또는 메시지.
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        복원된 DataFrame.
+    
+    Examples
+    --------
+    >>> df = pd.DataFrame.checkout(0)
     """
     return pd_checkout(idx_or_hash, commit_dir)
 
 @classmethod
-def _df_commit_list(cls, commit_dir=None):
-    """
-    DataFrame의 커밋 목록을 반환합니다.
-    사용법:
-        pd.DataFrame.commit_list()
+def _df_commit_list(cls, commit_dir: Optional[str] = None) -> pd.DataFrame:
+    """DataFrame의 커밋 목록을 반환합니다.
+    
+    Parameters
+    ----------
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        커밋 목록 DataFrame.
+    
+    Examples
+    --------
+    >>> commits = pd.DataFrame.commit_list()
     """
     return pd_commit_list(commit_dir)
 
 @classmethod
-def _df_commit_rm(cls, idx_or_hash, commit_dir=None):
-    """
-    DataFrame 커밋 기록에서 특정 커밋을 삭제합니다.
-    사용법:
-        pd.DataFrame.commit_rm(0)
+def _df_commit_rm(cls, idx_or_hash: Union[int, str], commit_dir: Optional[str] = None) -> bool:
+    """DataFrame 커밋 기록에서 특정 커밋을 삭제합니다.
+    
+    Parameters
+    ----------
+    idx_or_hash : int or str
+        삭제할 커밋의 순서 번호, 해시, 날짜, 또는 메시지.
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    bool
+        삭제 성공 여부.
+    
+    Examples
+    --------
+    >>> pd.DataFrame.commit_rm(0)
     """
     return pd_commit_rm(idx_or_hash, commit_dir)
 
 @classmethod
-def _df_commit_has(cls, idx_or_hash, commit_dir=None):
-    """
-    DataFrame 커밋이 존재하는지 확인합니다.
-    사용법:
-        pd.DataFrame.commit_has("메시지")
+def _df_commit_has(cls, idx_or_hash: Union[int, str], commit_dir: Optional[str] = None) -> bool:
+    """DataFrame 커밋 기록에 특정 커밋이 존재하는지 확인합니다.
+    
+    Parameters
+    ----------
+    idx_or_hash : int or str
+        확인할 커밋의 순서 번호, 해시, 날짜, 또는 메시지.
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    bool
+        커밋 존재 여부.
+    
+    Examples
+    --------
+    >>> pd.DataFrame.commit_has("메시지")
     """
     return pd_commit_has(idx_or_hash, commit_dir)
 
@@ -671,50 +1017,50 @@ def _df_commit_has(cls, idx_or_hash, commit_dir=None):
 # =============================================================================
 
 # 캐시 관련 helper API 함수들
-def cache_key(*datas, **kwargs):
-    """
-    여러 데이터와 키워드 인자를 받아서 고유한 해시키 생성
+def cache_key(*datas: Any, **kwargs: Any) -> str:
+    """여러 데이터와 키워드 인자를 받아서 고유한 해시키 생성.
     
-    Parameters:
-    -----------
-    *datas : any
-        해시키 생성에 사용할 데이터들
-    **kwargs : any
-        해시키 생성에 사용할 키워드 인자들
+    Parameters
+    ----------
+    *datas : Any
+        해시키 생성에 사용할 데이터들.
+    **kwargs : Any
+        해시키 생성에 사용할 키워드 인자들.
     
-    Returns:
+    Returns
+    -------
+    str
+        MD5 해시 키.
+    
+    Examples
     --------
-    str : MD5 해시 키
-    
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    >>> import helper_c0z0c_dev as helper
     >>> key = helper.cache_key("model_v1", params)
     >>> print(key)  # '1a2b3c4d5e...'
     """
     return DataCatch.key(*datas, **kwargs)
 
-def cache_save(key, value, cache_file=None):
-    """
-    데이터를 캐시에 저장
+def cache_save(key: str, value: Any, cache_file: Optional[str] = None) -> bool:
+    """데이터를 캐시에 저장.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     key : str
-        저장할 때 사용할 키
-    value : any
-        저장할 데이터 (DataFrame, numpy array, 일반 객체 등)
+        저장할 때 사용할 키.
+    value : Any
+        저장할 데이터 (DataFrame, numpy array, 일반 객체 등).
     cache_file : str, optional
-        캐시 파일 경로 
+        캐시 파일 경로.
         - None (기본값): 환경별 자동 설정
           * Colab: /content/drive/MyDrive/cache.json
           * 로컬: cache.json
         - 상대 경로: Colab에서 /content/drive/MyDrive/ 하위에 자동 저장
         - 절대 경로: 지정된 경로 그대로 사용
     
-    Returns:
-    --------
-    bool : 저장 성공 여부
+    Returns
+    -------
+    bool
+        저장 성공 여부.
     
     Examples:
     ---------
@@ -726,29 +1072,29 @@ def cache_save(key, value, cache_file=None):
     """
     return DataCatch.save(key, value, cache_file)
 
-def cache_load(key, cache_file=None):
-    """
-    캐시에서 데이터 로드
+def cache_load(key: str, cache_file: Optional[str] = None) -> Any:
+    """캐시에서 데이터 로드.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     key : str
-        로드할 데이터의 키
+        로드할 데이터의 키.
     cache_file : str, optional
-        캐시 파일 경로
+        캐시 파일 경로.
         - None (기본값): 환경별 자동 설정
           * Colab: /content/drive/MyDrive/cache.json
           * 로컬: cache.json
         - 상대 경로: Colab에서 /content/drive/MyDrive/ 하위에서 자동 탐색
         - 절대 경로: 지정된 경로에서 로드
     
-    Returns:
-    --------
-    any or None : 저장된 데이터 또는 None (키가 없을 경우)
+    Returns
+    -------
+    Any or None
+        저장된 데이터 또는 None (키가 없을 경우).
     
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    Examples
+    --------
+    >>> import helper_c0z0c_dev as helper
     >>> key = helper.cache_key("model_v1", params)
     >>> model = helper.cache_load(key)  # 환경별 기본 경로에서 로드
     >>> if model:
@@ -756,174 +1102,180 @@ def cache_load(key, cache_file=None):
     """
     return DataCatch.load(key, cache_file)
 
-def cache_exists(key, cache_file=None):
-    """
-    캐시에 키가 존재하는지 확인
+def cache_exists(key: str, cache_file: Optional[str] = None) -> bool:
+    """캐시에 키가 존재하는지 확인.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     key : str
-        확인할 키
+        확인할 키.
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Returns:
+    Returns
+    -------
+    bool
+        키 존재 여부.
+    
+    Examples
     --------
-    bool : 키 존재 여부
-    
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    >>> import helper_c0z0c_dev as helper
     >>> key = helper.cache_key("model_v1", params)
     >>> if helper.cache_exists(key):
     >>>     model = helper.cache_load(key)
     """
     return DataCatch.exists(key, cache_file)
 
-def cache_delete(key, cache_file=None):
-    """
-    캐시에서 특정 키 삭제
+def cache_delete(key: str, cache_file: Optional[str] = None) -> bool:
+    """캐시에서 특정 키 삭제.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     key : str
-        삭제할 키
+        삭제할 키.
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Returns:
+    Returns
+    -------
+    bool
+        삭제 성공 여부.
+    
+    Examples
     --------
-    bool : 삭제 성공 여부
-    
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    >>> import helper_c0z0c_dev as helper
     >>> helper.cache_delete("old_model_key")
     """
     return DataCatch.delete(key, cache_file)
 
-def cache_delete_keys(*keys, cache_file=None):
-    """
-    캐시에서 여러 키를 한번에 삭제
+def cache_delete_keys(*keys: str, cache_file: Optional[str] = None) -> int:
+    """캐시에서 여러 키를 한번에 삭제.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     *keys : str
-        삭제할 키들
+        삭제할 키들.
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Returns:
+    Returns
+    -------
+    int
+        삭제된 키의 개수.
+    
+    Examples
     --------
-    int : 삭제된 키의 개수
-    
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    >>> import helper_c0z0c_dev as helper
     >>> helper.cache_delete_keys("key1", "key2", "key3")
     """
     return DataCatch.delete_keys(*keys, cache_file=cache_file)
 
-def cache_clear(cache_file=None):
-    """
-    캐시 전체 초기화
+def cache_clear(cache_file: Optional[str] = None) -> None:
+    """캐시 전체 초기화.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    Examples
+    --------
+    >>> import helper_c0z0c_dev as helper
     >>> helper.cache_clear()  # 모든 캐시 삭제
     """
     DataCatch.clear_cache(cache_file)
     print("캐시 초기화 완료")
 
-def cache_info(cache_file=None):
-    """
-    캐시 정보 출력
+def cache_info(cache_file: Optional[str] = None) -> None:
+    """캐시 정보 출력.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    Examples
+    --------
+    >>> import helper_c0z0c_dev as helper
     >>> helper.cache_info()
     """
     DataCatch.cache_info(cache_file)
 
-def cache_list_keys(cache_file=None):
-    """
-    저장된 모든 키 목록 반환
+def cache_list_keys(cache_file: Optional[str] = None) -> List[str]:
+    """저장된 모든 키 목록 반환.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Returns:
+    Returns
+    -------
+    List[str]
+        키 목록.
+    
+    Examples
     --------
-    list : 키 목록
-    
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    >>> import helper_c0z0c_dev as helper
     >>> keys = helper.cache_list_keys()
     >>> print(f"저장된 키 개수: {len(keys)}")
     """
     return DataCatch.list_keys(cache_file)
 
-def cache_compress(cache_file=None):
-    """
-    캐시 파일을 압축하여 저장 공간 절약
+def cache_compress(cache_file: Optional[str] = None) -> bool:
+    """캐시 파일을 압축하여 저장 공간 절약.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     cache_file : str, optional
-        압축할 캐시 파일 경로 (기본값: cache.json)
+        압축할 캐시 파일 경로 (기본값: cache.json).
     
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    Returns
+    -------
+    bool
+        압축 성공 여부.
+    
+    Examples
+    --------
+    >>> import helper_c0z0c_dev as helper
     >>> helper.cache_compress()  # 캐시 파일 압축
     """
     return DataCatch.compress_cache(cache_file)
 
-def cache_cleanup(days=30, cache_file=None):
-    """
-    오래된 캐시 항목 정리 (현재는 수동 정리만 지원)
+def cache_cleanup(days: int = 30, cache_file: Optional[str] = None) -> int:
+    """오래된 캐시 항목 정리 (현재는 수동 정리만 지원).
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     days : int
-        보관할 일수 (현재 미구현, 향후 확장용)
+        보관할 일수 (현재 미구현, 향후 확장용).
     cache_file : str, optional
-        정리할 캐시 파일 경로
+        정리할 캐시 파일 경로.
     
-    Examples:
-    ---------
-    >>> import helper.c0z0c.dev as helper
+    Returns
+    -------
+    int
+        캐시 항목 수.
+    
+    Examples
+    --------
+    >>> import helper_c0z0c_dev as helper
     >>> helper.cache_cleanup()  # 수동 정리
     """
     return DataCatch.cleanup_cache(days, cache_file)
 
-def cache_size(cache_file=None):
-    """
-    캐시 크기(항목 수) 반환
+def cache_size(cache_file: Optional[str] = None) -> int:
+    """캐시 크기(항목 수) 반환.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     cache_file : str, optional
-        캐시 파일 경로 (기본값: cache.json)
+        캐시 파일 경로 (기본값: cache.json).
     
-    Returns:
-    --------
-    int : 캐시에 저장된 항목 수
+    Returns
+    -------
+    int
+        캐시에 저장된 항목 수.
     
     Examples:
     ---------
@@ -938,20 +1290,19 @@ def cache_size(cache_file=None):
 # PANDAS EXTENSION: BASIC COLUMN DESCRIPTION FUNCTIONS
 # =============================================================================
 
-def set_head_att(self, key_or_dict, value=None):
-    """
-    컬럼 설명을 설정합니다.
+def set_head_att(self, key_or_dict: Union[Dict[str, str], str], value: Optional[str] = None) -> None:
+    """컬럼 설명을 설정합니다.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     key_or_dict : dict or str
         - dict: 여러 컬럼 설명을 한 번에 설정 {"컬럼명": "설명"}
         - str: 단일 컬럼명 (value와 함께 사용)
     value : str, optional
-        key_or_dict가 str일 때 해당 컬럼의 설명
+        key_or_dict가 str일 때 해당 컬럼의 설명.
     
-    Examples:
-    ---------
+    Examples
+    --------
     >>> df.set_head_att({"id": "ID", "state": "지역"})
     >>> df.set_head_att("id", "아이디")
     """
@@ -970,28 +1321,29 @@ def set_head_att(self, key_or_dict, value=None):
     else:
         raise ValueError("사용법: set_head_att(dict) 또는 set_head_att(key, value)")
 
-def get_head_att(self, key=None):
-    """
-    컬럼 설명을 반환합니다.
+def get_head_att(self, key: Optional[str] = None) -> Union[Dict[str, str], str]:
+    """컬럼 설명을 반환합니다.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     key : str, optional
-        특정 컬럼의 설명을 가져올 컬럼명. None이면 전체 딕셔너리 반환
+        특정 컬럼의 설명을 가져올 컬럼명. None이면 전체 딕셔너리 반환.
     
-    Returns:
-    --------
-    dict or str : 
+    Returns
+    -------
+    dict or str
         - key가 None이면 전체 컬럼 설명 딕셔너리 반환
         - key가 주어지면 해당 컬럼의 설명 문자열 반환
     
-    Raises:
-    -------
-    KeyError : 존재하지 않는 컬럼명을 요청했을 때
-    TypeError : key가 문자열이 아닐 때
+    Raises
+    ------
+    KeyError
+        존재하지 않는 컬럼명을 요청했을 때.
+    TypeError
+        key가 문자열이 아닐 때.
     
-    Examples:
-    ---------
+    Examples
+    --------
     >>> descriptions = df.get_head_att()           # 전체 딕셔너리
     >>> score_desc = df.get_head_att('score')     # 특정 컬럼 설명
     >>> descriptions['new_col'] = '새로운 설명'    # 딕셔너리 직접 수정 가능
@@ -1018,14 +1370,13 @@ def get_head_att(self, key=None):
     
     return self.attrs["column_descriptions"][key]
 
-def remove_head_att(self, key):
-    """
-    특정 컬럼 설명 또는 컬럼 설명 리스트 삭제
+def remove_head_att(self, key: Union[str, List[str]]) -> None:
+    """특정 컬럼 설명 또는 컬럼 설명 리스트 삭제.
     
-    Parameters:
-    -----------
-    key : str or list
-        삭제할 컬럼명 또는 컬럼명 리스트
+    Parameters
+    ----------
+    key : str or List[str]
+        삭제할 컬럼명 또는 컬럼명 리스트.
     """
     if not hasattr(self, 'attrs') or 'column_descriptions' not in self.attrs:
         return
@@ -1040,14 +1391,29 @@ def remove_head_att(self, key):
         else:
             print(f"'{k}' 컬럼 설명을 찾을 수 없습니다.")
 
-def clear_head_att(self):
+def clear_head_att(self) -> None:
     """모든 컬럼 설명을 초기화합니다."""
     if not hasattr(self, 'attrs'):
         self.attrs = {}
     self.attrs["column_descriptions"] = {}
 
-def _align_text(text, width, align='left'):
-    """텍스트를 지정된 폭에 맞춰 정렬"""
+def _align_text(text: Any, width: int, align: str = 'left') -> str:
+    """텍스트를 지정된 폭에 맞춰 정렬.
+    
+    Parameters
+    ----------
+    text : Any
+        정렬할 텍스트.
+    width : int
+        정렬 폭.
+    align : str, default 'left'
+        정렬 방향 ('left', 'right', 'center').
+    
+    Returns
+    -------
+    str
+        정렬된 텍스트.
+    """
     text_str = str(text)
     current_width = _get_text_width(text_str)
     padding = max(0, width - current_width)
@@ -1061,8 +1427,21 @@ def _align_text(text, width, align='left'):
     else:  # left (default)
         return text_str + ' ' * padding
 
-def _calculate_column_widths(df_display, labels):
-    """컬럼 폭 계산 (pandas 기본 스타일)"""
+def _calculate_column_widths(df_display: pd.DataFrame, labels: Dict[str, str]) -> List[int]:
+    """컬럼 폭 계산 (pandas 기본 스타일).
+    
+    Parameters
+    ----------
+    df_display : pd.DataFrame
+        표시할 DataFrame.
+    labels : dict of {str: str}
+        컬럼명과 한글 설명의 매핑.
+    
+    Returns
+    -------
+    list of int
+        각 컬럼의 표시 폭 리스트.
+    """
     widths = []
     
     # 첫 번째 컬럼: 인덱스 폭 계산
@@ -1099,30 +1478,30 @@ def _calculate_column_widths(df_display, labels):
     
     return widths
 
-def pd_head_att(self, rows=5, out=None):
+def pd_head_att(self, rows: Union[int, str] = 5, out: Optional[str] = None) -> Any:
     """한글 컬럼 설명이 포함된 DataFrame을 다양한 형태로 출력합니다.
-    import pandas as pd
-    df.head_att()
-    df.head_att(rows=5, out='print')
-    df.head_att(rows='all', out='html')
-    Parameters:
-    -----------
+    
+    Parameters
+    ----------
     rows : int or str, optional
-        출력할 행 수 (기본값: 5)
+        출력할 행 수 (기본값: 5). 'all' 또는 -1이면 전체 출력.
     out : str, optional
-        출력 형식 (기본값: 'print')
-        'print', 'html', 'str' 중 하나를 선택할 수 있습니다.
-    Returns:
-    --------
-    str or None
-        - 'print'일 경우 None 반환 (콘솔 출력)
-        - 'html'일 경우 HTML 객체 반환
-        - 'str'일 경우 문자열 형태로 반환
-    Raises:
+        출력 형식 (기본값: 'print'). 'print', 'html', 'str' 중 선택.
+    
+    Returns
     -------
-    ValueError : 잘못된 out 옵션
-    Examples:
-    ---------
+    str or None
+        - 'print'일 경우 None 반환 (콘솔 출력).
+        - 'html'일 경우 HTML 객체 반환.
+        - 'str'일 경우 문자열 형태로 반환.
+    
+    Raises
+    ------
+    ValueError
+        잘못된 out 옵션.
+    
+    Examples
+    --------
     >>> df.head_att()  # 기본 출력 (5행)
     >>> df.head_att(rows=10)  # 10행 출력
     >>> df.head_att(out='html')  # HTML 형태로 출력
@@ -1212,8 +1591,16 @@ def pd_head_att(self, rows=5, out=None):
         else:
             raise ValueError("out 옵션은 'html', 'print', 'str', 'string' 중 하나여야 합니다.")
 
-def _print_head_att(self, df_display, labels):
-    """print 형태로 출력 (pandas 기본 스타일)"""
+def _print_head_att(self, df_display: pd.DataFrame, labels: Dict[str, str]) -> None:
+    """print 형태로 출력 (pandas 기본 스타일).
+    
+    Parameters
+    ----------
+    df_display : pd.DataFrame
+        표시할 DataFrame.
+    labels : dict of {str: str}
+        컬럼명과 한글 설명의 매핑.
+    """
     column_widths = _calculate_column_widths(df_display, labels)
     
     # 첫 번째 부분은 인덱스용
@@ -1245,8 +1632,21 @@ def _print_head_att(self, df_display, labels):
             row_parts.append(_align_text(_format_value(val), width, 'right'))
         print(''.join(row_parts))
 
-def _html_head_att(self, df_display, labels):
-    """HTML 형태로 출력"""
+def _html_head_att(self, df_display: pd.DataFrame, labels: Dict[str, str]) -> Any:
+    """HTML 형태로 출력.
+    
+    Parameters
+    ----------
+    df_display : pd.DataFrame
+        표시할 DataFrame.
+    labels : dict of {str: str}
+        컬럼명과 한글 설명의 매핑.
+    
+    Returns
+    -------
+    HTML or str
+        HTML 객체 또는 HTML 문자열.
+    """
     header = []
     for col in df_display.columns:
         if col in labels and labels[col]:
@@ -1265,8 +1665,21 @@ def _html_head_att(self, df_display, labels):
     else:
         return df_copy.to_html(escape=False)
 
-def _string_head_att(self, df_display, labels):
-    """문자열 형태로 출력"""
+def _string_head_att(self, df_display: pd.DataFrame, labels: Dict[str, str]) -> str:
+    """문자열 형태로 출력.
+    
+    Parameters
+    ----------
+    df_display : pd.DataFrame
+        표시할 DataFrame.
+    labels : dict of {str: str}
+        컬럼명과 한글 설명의 매핑.
+    
+    Returns
+    -------
+    str
+        포맷된 문자열.
+    """
     column_widths = _calculate_column_widths(df_display, labels)
     
     result = ""
@@ -1299,8 +1712,23 @@ def _string_head_att(self, df_display, labels):
     
     return result.rstrip()
 
-def series_head_att(self, rows=5, out=None):
-    """한글 컬럼 설명이 포함된 Series를 다양한 형태로 출력합니다."""
+def series_head_att(self, rows: Union[int, str] = 5, out: Optional[str] = None) -> Any:
+    """한글 컬럼 설명이 포함된 Series를 다양한 형태로 출력합니다.
+    
+    Parameters
+    ----------
+    rows : int or str, optional
+        출력할 행 수 (기본값: 5). 'all' 또는 -1이면 전체 출력.
+    out : str, optional
+        출력 형식 (기본값: 'print'). 'print', 'html', 'str' 중 선택.
+    
+    Returns
+    -------
+    str or None
+        - 'print'일 경우 None 반환 (콘솔 출력).
+        - 'html'일 경우 HTML 객체 반환.
+        - 'str'일 경우 문자열 형태로 반환.
+    """
     labels = self.attrs.get("column_descriptions", {})
     
     # 출력할 데이터 결정
@@ -1407,8 +1835,8 @@ def series_head_att(self, rows=5, out=None):
 # PANDAS EXTENSION: COLUMN SET MANAGEMENT FUNCTIONS
 # =============================================================================
 
-def _init_column_attrs(self):
-    """컬럼 속성 초기화"""
+def _init_column_attrs(self) -> None:
+    """컬럼 속성 초기화."""
     if not hasattr(self, 'attrs'):
         self.attrs = {}
     if 'columns_extra' not in self.attrs:
@@ -1417,26 +1845,21 @@ def _init_column_attrs(self):
         }
         self.attrs['current_column_set'] = 'org'
 
-def set_head_ext(self, columns_name, columns_extra=None, column_value=None):
-    """
-    보조 컬럼명 세트를 설정합니다.
+def set_head_ext(self, columns_name: str, columns_extra: Union[Dict[str, str], str, None] = None, column_value: Optional[str] = None) -> None:
+    """보조 컬럼명 세트를 설정합니다.
     
-    사용법:
-    1. 전체 세트 설정: set_head_ext('kr', {'id': 'ID', 'name': '이름'})
-    2. 개별 컬럼 설정: set_head_ext('kr', 'name', '이름')
-    
-    Parameters:
-    -----------
+    Parameters
+    ----------
     columns_name : str
-        컬럼 세트의 이름 (예: 'kr', 'desc', 'eng')
-    columns_extra : dict or str
-        방식1: 전체 매핑 딕셔너리 {"원본컬럼": "새컬럼명"}
-        방식2: 개별 컬럼명 (키)
+        컬럼 세트의 이름 (예: 'kr', 'desc', 'eng').
+    columns_extra : dict or str, optional
+        방식1: 전체 매핑 딕셔너리 {"원본컬럼": "새컬럼명"}.
+        방식2: 개별 컬럼명 (키).
     column_value : str, optional
-        방식2에서 사용할 컬럼 값
+        방식2에서 사용할 컬럼 값.
     
-    Raises:
-    -------
+    Raises
+    ------
     TypeError : 잘못된 타입의 매개변수
     ValueError : 잘못된 값 (빈 문자열, 빈 딕셔너리, None 값, 중복값 등)
     KeyError : 존재하지 않는 컬럼명
@@ -1455,8 +1878,25 @@ def set_head_ext(self, columns_name, columns_extra=None, column_value=None):
         # 방식 1: 전체 세트 설정
         return self._set_head_ext_bulk(columns_name, columns_extra)
 
-def _set_head_ext_bulk(self, columns_name, columns_extra):
-    """전체 세트 설정 (기존 방식)"""
+def _set_head_ext_bulk(self, columns_name: str, columns_extra: Dict[str, str]) -> None:
+    """전체 세트 설정 (기존 방식).
+    
+    Parameters
+    ----------
+    columns_name : str
+        컬럼 세트의 이름.
+    columns_extra : dict of {str: str}
+        컬럼명 매핑 딕셔너리.
+    
+    Raises
+    ------
+    TypeError
+        잘못된 타입의 매개변수.
+    ValueError
+        잘못된 값 (빈 문자열, 빈 딕셔너리 등).
+    KeyError
+        존재하지 않는 컬럼명.
+    """
     # 1. 입력 타입 검증
     if not isinstance(columns_name, str):
         raise TypeError(f"columns_name은 문자열이어야 합니다. 현재 타입: {type(columns_name)}")
@@ -1506,8 +1946,27 @@ def _set_head_ext_bulk(self, columns_name, columns_extra):
     
     print(f"컬럼 세트 '{columns_name}' 설정 완료 ({len(columns_extra)}개)")
 
-def _set_head_ext_individual(self, columns_name, column_key, column_value):
-    """개별 컬럼 설정 (새로운 방식)"""
+def _set_head_ext_individual(self, columns_name: str, column_key: str, column_value: str) -> None:
+    """개별 컬럼 설정 (새로운 방식).
+    
+    Parameters
+    ----------
+    columns_name : str
+        컬럼 세트의 이름.
+    column_key : str
+        설정할 컬럼명.
+    column_value : str
+        새로운 컬럼 값.
+    
+    Raises
+    ------
+    TypeError
+        잘못된 타입의 매개변수.
+    ValueError
+        잘못된 값 (빈 문자열, None 등).
+    KeyError
+        존재하지 않는 컬럼명.
+    """
     # 입력 검증
     if not isinstance(columns_name, str):
         raise TypeError(f"columns_name은 문자열이어야 합니다. 현재 타입: {type(columns_name)}")
@@ -1546,23 +2005,25 @@ def _set_head_ext_individual(self, columns_name, column_key, column_value):
     else:
         print(f"'{columns_name}': '{column_key}' 수정됨")
 
-def set_head_column(self, columns_name):
-    """
-    지정된 컬럼 세트로 DataFrame의 컬럼명을 변경합니다.
+def set_head_column(self, columns_name: str) -> None:
+    """지정된 컬럼 세트로 DataFrame의 컬럼명을 변경합니다.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     columns_name : str
-        사용할 컬럼 세트 이름 (예: 'kr', 'desc', 'org')
+        사용할 컬럼 세트 이름 (예: 'kr', 'desc', 'org').
     
-    Raises:
-    -------
-    TypeError : 잘못된 타입의 매개변수
-    ValueError : 잘못된 값 (빈 문자열 등)
-    KeyError : 존재하지 않는 컬럼 세트명
+    Raises
+    ------
+    TypeError
+        잘못된 타입의 매개변수.
+    ValueError
+        잘못된 값 (빈 문자열 등).
+    KeyError
+        존재하지 않는 컬럼 세트명.
     
-    Examples:
-    ---------
+    Examples
+    --------
     >>> df.set_head_column('kr')   # 한글 컬럼명으로 변경
     >>> df.set_head_column('org')  # 원본 컬럼명으로 복원
     """
@@ -1593,8 +2054,23 @@ def set_head_column(self, columns_name):
     
     print(f"컬럼명 변경: '{current_set}' → '{columns_name}'")
 
-def _convert_columns(self, current_set, target_set, target_columns):
-    """컬럼명 변환 로직"""
+def _convert_columns(self, current_set: str, target_set: str, target_columns: Dict[str, str]) -> List[str]:
+    """컬럼명 변환 로직.
+    
+    Parameters
+    ----------
+    current_set : str
+        현재 컬럼 세트명.
+    target_set : str
+        타겟 컬럼 세트명.
+    target_columns : dict of {str: str}
+        타겟 컬럼 매핑.
+    
+    Returns
+    -------
+    list of str
+        변환된 컬럼명 리스트.
+    """
     current_columns = self.attrs['columns_extra'][current_set]['columns']
     current_to_org = {v: k for k, v in current_columns.items()}
     
@@ -1612,8 +2088,16 @@ def _convert_columns(self, current_set, target_set, target_columns):
     
     return new_columns
 
-def _update_column_descriptions(self, current_set, target_set):
-    """컬럼 설명 업데이트"""
+def _update_column_descriptions(self, current_set: str, target_set: str) -> None:
+    """컬럼 설명 업데이트.
+    
+    Parameters
+    ----------
+    current_set : str
+        현재 컬럼 세트명.
+    target_set : str
+        타겟 컬럼 세트명.
+    """
     if 'column_descriptions' not in self.attrs:
         return
     
@@ -1649,28 +2133,28 @@ def _update_column_descriptions(self, current_set, target_set):
     
     self.attrs['column_descriptions'] = new_descriptions
 
-def get_current_column_set(self):
-    """
-    현재 활성화된 컬럼 세트를 반환합니다.
+def get_current_column_set(self) -> str:
+    """현재 활성화된 컬럼 세트를 반환합니다.
     
-    Returns:
-    --------
-    str : 현재 컬럼 세트 이름
+    Returns
+    -------
+    str
+        현재 컬럼 세트 이름.
     """
     if not hasattr(self, 'attrs'):
         return 'org'
     return self.attrs.get('current_column_set', 'org')
 
-def get_head_ext(self, columns_name=None):
-    """
-    보조 컬럼명 세트를 반환합니다.
+def get_head_ext(self, columns_name: Optional[str] = None) -> Union[Dict[str, Any], Dict[str, Dict[str, Any]]]:
+    """보조 컬럼명 세트를 반환합니다.
     
-    Parameters:
-    -----------
+    Parameters
+    ----------
     columns_name : str, optional
-        특정 컬럼 세트 이름. None이면 전체 반환
+        특정 컬럼 세트 이름. None이면 전체 반환.
     
-    Returns:
+    Returns
+    -------
     --------
     dict : 컬럼 세트 정보
     """
@@ -1684,8 +2168,8 @@ def get_head_ext(self, columns_name=None):
     else:
         return self.attrs['columns_extra'].get(columns_name, {})
 
-def list_head_ext(self):
-    """등록된 모든 컬럼 세트 출력"""
+def list_head_ext(self) -> None:
+    """등록된 모든 컬럼 세트 출력."""
     self._init_column_attrs()
     
     if not self.attrs['columns_extra']:
@@ -1702,8 +2186,8 @@ def list_head_ext(self):
         formatted_name = f"{name}{status}".rjust(max_name_length + 5)
         print(f"{formatted_name}: {columns_list}")
 
-def clear_head_ext(self):
-    """컬럼명을 원본으로 복원 및 컬럼 세트 초기화"""
+def clear_head_ext(self) -> None:
+    """컬럼명을 원본으로 복원 및 컬럼 세트 초기화."""
     if not hasattr(self, 'attrs') or 'columns_extra' not in self.attrs:
         return
     
@@ -1718,13 +2202,13 @@ def clear_head_ext(self):
     self.attrs['columns_extra'] = {'org': org_backup}
     print(" 모든 컬럼 세트를 초기화했습니다.")
 
-def remove_head_ext(self, columns_name):
-    """
-    특정 컬럼 세트 또는 컬럼 세트 리스트 삭제
-    Parameters:
-    -----------
-    columns_name : str or list
-        삭제할 컬럼 세트명 또는 세트명 리스트
+def remove_head_ext(self, columns_name: Union[str, List[str]]) -> None:
+    """특정 컬럼 세트 또는 컬럼 세트 리스트 삭제.
+    
+    Parameters
+    ----------
+    columns_name : str or list of str
+        삭제할 컬럼 세트명 또는 세트명 리스트.
     """
     if not hasattr(self, 'attrs') or 'columns_extra' not in self.attrs:
         return
@@ -1753,13 +2237,21 @@ def remove_head_ext(self, columns_name):
 # =============================================================================
 
 class DataCatch:
-    _default_cache_file = "cache.json"
-    _cache = None
-    _cache_file = None
+    """데이터 캐싱을 위한 클래스."""
+    
+    _default_cache_file: str = "cache.json"
+    _cache: Optional[Dict[str, Any]] = None
+    _cache_file: Optional[str] = None
     
     @classmethod
-    def _initialize_cache(cls, cache_file=None):
-        """캐시 초기화 (한 번만 실행)"""
+    def _initialize_cache(cls, cache_file: Optional[str] = None) -> None:
+        """캐시 초기화 (한 번만 실행).
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        """
         if cls._cache is None:
             # 기본 캐시 파일 경로 결정
             if cache_file is None:
@@ -1780,8 +2272,21 @@ class DataCatch:
             cls._cache = cls._load_cache()
     
     @staticmethod
-    def key(*datas, **kwargs):
-        """여러 데이터와 키워드 인자를 받아서 고유한 해시키 생성"""
+    def key(*datas: Any, **kwargs: Any) -> str:
+        """여러 데이터와 키워드 인자를 받아서 고유한 해시키 생성.
+        
+        Parameters
+        ----------
+        *datas : Any
+            해시할 데이터들.
+        **kwargs : Any
+            해시할 키워드 인자들.
+        
+        Returns
+        -------
+        str
+            MD5 해시 문자열.
+        """
         try:
             # 위치 인자들을 직렬화 가능한 형태로 변환
             serializable_data = []
@@ -1811,8 +2316,23 @@ class DataCatch:
             return hashlib.md5(fallback_str.encode()).hexdigest()
         
     @classmethod
-    def save(cls, key, value, cache_file=None):
-        """값을 직렬화 가능한 형태로 변환하여 저장"""
+    def save(cls, key: str, value: Any, cache_file: Optional[str] = None) -> bool:
+        """값을 직렬화 가능한 형태로 변환하여 저장.
+        
+        Parameters
+        ----------
+        key : str
+            캐시 키.
+        value : Any
+            저장할 값.
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        bool
+            저장 성공 여부.
+        """
         cls._initialize_cache(cache_file)
         
         try:
@@ -1835,8 +2355,21 @@ class DataCatch:
             return False
 
     @classmethod
-    def load(cls, key, cache_file=None):
-        """저장된 값을 원래 형태로 복원하여 반환"""
+    def load(cls, key: str, cache_file: Optional[str] = None) -> Any:
+        """저장된 값을 원래 형태로 복원하여 반환.
+        
+        Parameters
+        ----------
+        key : str
+            캐시 키.
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        Any
+            복원된 값. 없으면 None.
+        """
         cls._initialize_cache(cache_file)
         
         cached_value = cls._cache.get(key, None)
@@ -1851,8 +2384,19 @@ class DataCatch:
             return cached_value  # 실패 시 원본 반환
 
     @classmethod
-    def _make_serializable(cls, value):
-        """값을 JSON 직렬화 가능한 형태로 변환 (NumPy 버전 호환성 개선)"""
+    def _make_serializable(cls, value: Any) -> Any:
+        """값을 JSON 직렬화 가능한 형태로 변환 (NumPy 버전 호환성 개선).
+        
+        Parameters
+        ----------
+        value : Any
+            변환할 값.
+        
+        Returns
+        -------
+        Any
+            직렬화 가능한 형태의 값.
+        """
         if isinstance(value, np.ndarray):
             try:
                 # dtype 호환성 처리
@@ -1936,8 +2480,19 @@ class DataCatch:
             return value
 
     @classmethod
-    def _restore_value(cls, cached_value):
-        """캐시된 값을 원래 형태로 복원 (NumPy 버전 호환성 개선)"""
+    def _restore_value(cls, cached_value: Any) -> Any:
+        """캐시된 값을 원래 형태로 복원 (NumPy 버전 호환성 개선).
+        
+        Parameters
+        ----------
+        cached_value : Any
+            복원할 캐시된 값.
+        
+        Returns
+        -------
+        Any
+            복원된 원본 형태의 값.
+        """
         if isinstance(cached_value, dict) and '_type' in cached_value:
             if cached_value['_type'] == 'numpy_array':
                 try:
@@ -1985,8 +2540,14 @@ class DataCatch:
         return cached_value
 
     @classmethod
-    def _load_cache(cls):
-        """캐시 파일 로드 (백업 시스템 적용)"""
+    def _load_cache(cls) -> Dict[str, Any]:
+        """캐시 파일 로드 (백업 시스템 적용).
+        
+        Returns
+        -------
+        dict of {str: Any}
+            로드된 캐시 데이터.
+        """
         backup_file = cls._cache_file + ".bak"
         
         # 메인 캐시 파일 로드 시도
@@ -2029,8 +2590,14 @@ class DataCatch:
         return {}
     
     @classmethod
-    def _load_from_backup(cls):
-        """백업 파일에서 캐시 로드"""
+    def _load_from_backup(cls) -> Dict[str, Any]:
+        """백업 파일에서 캐시 로드.
+        
+        Returns
+        -------
+        dict of {str: Any}
+            백업 파일에서 로드된 캐시 데이터.
+        """
         backup_file = cls._cache_file + ".bak"
         
         if not os.path.exists(backup_file):
@@ -2081,8 +2648,8 @@ class DataCatch:
             return {}
     
     @classmethod
-    def _cleanup_temp_files(cls):
-        """임시 파일들 정리"""
+    def _cleanup_temp_files(cls) -> None:
+        """임시 파일들 정리."""
         temp_file = cls._cache_file + ".tmp"
         if os.path.exists(temp_file):
             try:
@@ -2091,8 +2658,8 @@ class DataCatch:
                 pass
 
     @classmethod
-    def _save_cache(cls):
-        """캐시를 파일에 저장 (백업 시스템 적용)"""
+    def _save_cache(cls) -> None:
+        """캐시를 파일에 저장 (백업 시스템 적용)."""
         try:
             # 디렉토리가 존재하지 않으면 생성
             cache_dir = os.path.dirname(cls._cache_file)
@@ -2183,16 +2750,28 @@ class DataCatch:
             return False
 
     @classmethod
-    def clear_cache(cls, cache_file=None):
-        """캐시 초기화"""
+    def clear_cache(cls, cache_file: Optional[str] = None) -> None:
+        """캐시 초기화.
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        """
         cls._initialize_cache(cache_file)
         cls._cache = {}
         if os.path.exists(cls._cache_file):
             os.remove(cls._cache_file)
 
     @classmethod
-    def cache_info(cls, cache_file=None):
-        """캐시 정보 출력"""
+    def cache_info(cls, cache_file: Optional[str] = None) -> None:
+        """캐시 정보 출력.
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        """
         cls._initialize_cache(cache_file)
         env_name = "Colab" if _in_colab() else "로컬"
         print(f"캐시 정보 ({env_name} 환경):")
@@ -2240,8 +2819,21 @@ class DataCatch:
             print(f"   - 최근 수정: {mtime_str}")
 
     @classmethod
-    def delete(cls, key, cache_file=None):
-        """특정 키 삭제"""
+    def delete(cls, key: str, cache_file: Optional[str] = None) -> bool:
+        """특정 키 삭제.
+        
+        Parameters
+        ----------
+        key : str
+            삭제할 캐시 키.
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        bool
+            삭제 성공 여부.
+        """
         cls._initialize_cache(cache_file)
         
         if key in cls._cache:
@@ -2254,8 +2846,21 @@ class DataCatch:
             return False
     
     @classmethod
-    def delete_keys(cls, *keys, cache_file=None):
-        """여러 키를 한번에 삭제"""
+    def delete_keys(cls, *keys: str, cache_file: Optional[str] = None) -> int:
+        """여러 키를 한번에 삭제.
+        
+        Parameters
+        ----------
+        *keys : str
+            삭제할 캐시 키들.
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        int
+            삭제된 키의 개수.
+        """
         cls._initialize_cache(cache_file)
         
         deleted_count = 0
@@ -2274,26 +2879,72 @@ class DataCatch:
         return deleted_count
     
     @classmethod
-    def list_keys(cls, cache_file=None):
-        """저장된 모든 키 목록 조회"""
+    def list_keys(cls, cache_file: Optional[str] = None) -> List[str]:
+        """저장된 모든 키 목록 조회.
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        list of str
+            캐시 키 목록.
+        """
         cls._initialize_cache(cache_file)
         return list(cls._cache.keys())
     
     @classmethod
-    def exists(cls, key, cache_file=None):
-        """키 존재 여부 확인"""
+    def exists(cls, key: str, cache_file: Optional[str] = None) -> bool:
+        """키 존재 여부 확인.
+        
+        Parameters
+        ----------
+        key : str
+            확인할 캐시 키.
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        bool
+            키 존재 여부.
+        """
         cls._initialize_cache(cache_file)
         return key in cls._cache
     
     @classmethod
-    def size(cls, cache_file=None):
-        """캐시 크기 반환"""
+    def size(cls, cache_file: Optional[str] = None) -> int:
+        """캐시 크기 반환.
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        int
+            캐시에 저장된 항목 수.
+        """
         cls._initialize_cache(cache_file)
         return len(cls._cache)
     
     @classmethod
-    def compress_cache(cls, cache_file=None):
-        """캐시 파일 압축하여 저장 공간 절약"""
+    def compress_cache(cls, cache_file: Optional[str] = None) -> bool:
+        """캐시 파일 압축하여 저장 공간 절약.
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        bool
+            압축 성공 여부.
+        """
         cls._initialize_cache(cache_file)
         
         if not os.path.exists(cls._cache_file):
@@ -2328,8 +2979,21 @@ class DataCatch:
             return False
     
     @classmethod
-    def cleanup_cache(cls, days=30, cache_file=None):
-        """캐시 정리 (현재는 수동 정리)"""
+    def cleanup_cache(cls, days: int = 30, cache_file: Optional[str] = None) -> int:
+        """캐시 정리 (현재는 수동 정리).
+        
+        Parameters
+        ----------
+        days : int, optional
+            정리 기준 일수 (기본값: 30).
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        int
+            정리된 항목 수.
+        """
         cls._initialize_cache(cache_file)
         
         if not cls._cache:
@@ -2360,8 +3024,19 @@ class DataCatch:
         return len(cls._cache)
     
     @classmethod
-    def optimize_cache(cls, cache_file=None):
-        """캐시 최적화 (재저장으로 파일 크기 최적화)"""
+    def optimize_cache(cls, cache_file: Optional[str] = None) -> bool:
+        """캐시 최적화 (재저장으로 파일 크기 최적화).
+        
+        Parameters
+        ----------
+        cache_file : str, optional
+            캐시 파일 경로.
+        
+        Returns
+        -------
+        bool
+            최적화 성공 여부.
+        """
         cls._initialize_cache(cache_file)
         
         if not os.path.exists(cls._cache_file):
@@ -2390,14 +3065,33 @@ class DataCatch:
             return False
 
 
-def _generate_commit_hash(dt, msg):
-    """커밋 해시를 생성합니다."""
+def _generate_commit_hash(dt: datetime, msg: str) -> str:
+    """커밋 해시를 생성합니다.
+    
+    Parameters
+    ----------
+    dt : datetime
+        커밋 날짜시간.
+    msg : str
+        커밋 메시지.
+    
+    Returns
+    -------
+    str
+        생성된 커밋 해시 (12자리).
+    """
     base = f"{dt.strftime('%Y%m%d_%H%M%S')}_{msg}"
     return hashlib.md5(base.encode("utf-8")).hexdigest()[:12]
 
-def df_to_pickle(df, path):
-    """
-    DataFrame과 df.attrs(딕셔너리)까지 함께 pickle로 저장
+def df_to_pickle(df: pd.DataFrame, path: str) -> None:
+    """DataFrame과 df.attrs(딕셔너리)까지 함께 pickle로 저장.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        저장할 DataFrame.
+    path : str
+        저장할 파일 경로.
     """
     obj = {
         "data": df,
@@ -2406,9 +3100,18 @@ def df_to_pickle(df, path):
     with open(path, "wb") as f:
         pickle.dump(obj, f)
 
-def df_read_pickle(path):
-    """
-    DataFrame과 attrs(딕셔너리)까지 복원
+def df_read_pickle(path: str) -> pd.DataFrame:
+    """DataFrame과 attrs(딕셔너리)까지 복원.
+    
+    Parameters
+    ----------
+    path : str
+        읽어올 파일 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        복원된 DataFrame.
     """
     with open(path, "rb") as f:
         obj = pickle.load(f)
@@ -2422,12 +3125,35 @@ def df_read_pickle(path):
 # PANDAS COMMIT SYSTEM: CORE FUNCTIONS
 # =============================================================================
 
-def pd_commit(df, msg, commit_dir=None):
-    """
-    DataFrame의 현재 상태를 git처럼 커밋합니다.
-    파일명: 해시키.pkl, 메타: pandas_df.json
-    commit_dir: 저장할 폴더 지정 (None이면 기본)
+def pd_commit(df: pd.DataFrame, msg: str, commit_dir: Optional[str] = None) -> pd.DataFrame:
+    """DataFrame의 현재 상태를 git처럼 커밋합니다.
+    
     동일한 메시지가 있으면 기존 커밋을 새 커밋으로 대체(업데이트)합니다.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        커밋할 DataFrame.
+    msg : str
+        커밋 메시지.
+    commit_dir : str, optional
+        저장할 폴더 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        입력받은 DataFrame을 그대로 반환.
+    
+    Raises
+    ------
+    ValueError
+        df가 None이거나 유효한 DataFrame이 아닐 때.
+    
+    Examples
+    --------
+    >>> df.commit("데이터 전처리 완료")
+    >>> df = df.dropna()
+    >>> df.commit("결측치 제거 완료")
     """
     if df is None or not isinstance(df, pd.DataFrame):
         raise ValueError("df 인자가 None이거나 유효한 DataFrame이 아닙니다.")
@@ -2468,11 +3194,27 @@ def pd_commit(df, msg, commit_dir=None):
     return df
 
 
-def pd_commit_list(commit_dir=None):
-    """
-    커밋 리스트를 시간순으로 반환 (존재하는 파일만, 없으면 자동 삭제)
-    commit_dir: 저장 폴더 지정
-    반환값: pandas.DataFrame (순서, 해시, 시간, 메시지, 파일)
+def pd_commit_list(commit_dir: Optional[str] = None) -> pd.DataFrame:
+    """커밋 리스트를 시간순으로 반환합니다.
+    
+    존재하는 파일만 반환하고, 없는 파일은 자동으로 삭제합니다.
+    
+    Parameters
+    ----------
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        커밋 목록 DataFrame (index, hash, datetime, msg, file 컬럼).
+    
+    Examples
+    --------
+    >>> commits = pd.DataFrame.commit_list()
+    >>> print(commits)
+       index         hash            datetime           msg              file
+    0      0  1a2b3c4d5e  2024-01-01 10:00:00  초기 데이터  1a2b3c4d5e.pkl
     """
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
@@ -2503,11 +3245,29 @@ def pd_commit_list(commit_dir=None):
         print("커밋 내역이 없습니다.")
     return df
 
-def pd_checkout(idx_or_hash, commit_dir=None):
-    """
-    커밋 해시, 시간정보, 메시지, 순서번호로 DataFrame 복원
-    파일이 없는 경우 메타데이터에서 자동으로 정리하고 빈 DataFrame 반환
-    commit_dir: 저장 폴더 지정
+def pd_checkout(idx_or_hash: Union[int, str], commit_dir: Optional[str] = None) -> pd.DataFrame:
+    """커밋 해시, 시간정보, 메시지, 순서번호로 DataFrame을 복원합니다.
+    
+    파일이 없는 경우 메타데이터에서 자동으로 정리하고 빈 DataFrame을 반환합니다.
+    
+    Parameters
+    ----------
+    idx_or_hash : int or str
+        - int: 커밋 순서 번호 (0부터 시작)
+        - str: 커밋 해시, 날짜, 또는 메시지
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    pd.DataFrame
+        복원된 DataFrame. 실패 시 빈 DataFrame 반환.
+    
+    Examples
+    --------
+    >>> df = pd.DataFrame.checkout(0)      # 첫 번째 커밋 복원
+    >>> df = pd.DataFrame.checkout("해시")  # 해시로 복원
+    >>> df = pd.DataFrame.checkout("초기 데이터")  # 메시지로 복원
     """
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
@@ -2565,11 +3325,25 @@ def pd_checkout(idx_or_hash, commit_dir=None):
     return pd.DataFrame()  # 빈 DataFrame 반환
 
 
-def pd_commit_rm(idx_or_hash, commit_dir=None):
-    """
-    커밋을 삭제합니다.
-    idx_or_hash: 삭제할 커밋의 인덱스, 해시, 날짜, 또는 메시지
-    commit_dir: 저장 폴더 지정
+def pd_commit_rm(idx_or_hash: Union[int, str], commit_dir: Optional[str] = None) -> bool:
+    """커밋을 삭제합니다.
+    
+    Parameters
+    ----------
+    idx_or_hash : int or str
+        삭제할 커밋의 인덱스, 해시, 날짜, 또는 메시지.
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    bool
+        삭제 성공 여부.
+    
+    Examples
+    --------
+    >>> pd.DataFrame.commit_rm(0)  # 첫 번째 커밋 삭제
+    >>> pd.DataFrame.commit_rm("초기 데이터")  # 메시지로 삭제
     """
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
@@ -2602,10 +3376,27 @@ def pd_commit_rm(idx_or_hash, commit_dir=None):
     print(f"오류: 커밋 '{idx_or_hash}'을(를) 찾을 수 없습니다.")
     return False
 
-def pd_commit_has(idx_or_hash, commit_dir=None):
-    """
-    커밋 index, hash, datetime, msg 중 하나를 입력받아
-    해당 커밋 파일이 존재하면 True, 없으면 False 반환
+def pd_commit_has(idx_or_hash: Union[int, str], commit_dir: Optional[str] = None) -> bool:
+    """커밋 존재 여부를 확인합니다.
+    
+    Parameters
+    ----------
+    idx_or_hash : int or str
+        확인할 커밋의 인덱스, 해시, 날짜, 또는 메시지.
+    commit_dir : str, optional
+        저장 폴더 경로.
+    
+    Returns
+    -------
+    bool
+        커밋 파일이 존재하면 True, 없으면 False.
+    
+    Examples
+    --------
+    >>> if pd.DataFrame.commit_has(0):
+    >>>     print("첫 번째 커밋이 존재합니다")
+    >>> if pd.DataFrame.commit_has("초기 데이터"):
+    >>>     df = pd.DataFrame.checkout("초기 데이터")
     """
     meta = _load_commit_meta(commit_dir)
     save_dir = os.path.join(pd_root(commit_dir), ".commit_pandas")
