@@ -1,57 +1,95 @@
+"""
+Helper utilities for Jupyter Notebook environments.
+
+This module provides various utility functions for:
+- AI Hub dataset download and management
+- File operations (zip/unzip with progress bars)
+- Model saving/loading
+- Directory tree visualization
+- Logging configuration
+"""
+
+import json
+import logging
 import os
+import re
+import shutil
 import sys
+import tarfile
+import unicodedata
+import zipfile
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+import pytz
+import requests
+import torch
+from tqdm.notebook import tqdm
 
 try:
     # Colab 환경 여부 확인
     import google.colab
-    IS_COLAB = True
+    IS_COLAB: bool = True
 except ImportError:
-    IS_COLAB = False
+    IS_COLAB: bool = False
 
-# --- PyTorch: 딥러닝 관련 ---
-import torch
 
-# --- 기타 ---
-import requests
-import tarfile
-import shutil
-import json
-from datetime import datetime
-from pathlib import Path
-import re
-from tqdm.notebook import tqdm
-import numpy as np  # 수치 연산
-import logging
-import pytz
-from typing import Union, List, Optional
-import zipfile
-import unicodedata
+__version__: str = "2.6.0"
 
-################################################################################################################
-
-__version__ = "2.6.0"
-
-################################################################################################################
 
 class ShortLevelFormatter(logging.Formatter):
-    """로그 레벨을 1글자로 축약 (DEBUG→D, INFO→I, WARNING→W, ERROR→E, CRITICAL→C)"""
+    """
+    Custom logging formatter that abbreviates log levels to single characters.
 
-    LEVEL_MAP = {
+    This formatter converts log level names to single-character abbreviations:
+    DEBUG→D, INFO→I, WARNING→W, ERROR→E, CRITICAL→C
+
+    It also formats timestamps in Korean Standard Time (KST/Asia/Seoul).
+
+    Attributes:
+        LEVEL_MAP (Dict[str, str]): Mapping of full level names to abbreviations.
+        kst (pytz.timezone): Korean Standard Time timezone object.
+    """
+
+    LEVEL_MAP: Dict[str, str] = {
         'DEBUG': 'D',
         'INFO': 'I',
         'WARNING': 'W',
         'ERROR': 'E',
         'CRITICAL': 'C'
     }
-    kst = pytz.timezone('Asia/Seoul')
+    kst: pytz.tzinfo.BaseTzInfo = pytz.timezone('Asia/Seoul')
 
-    def format(self, record):
-        # 원본 레벨명을 약자로 교체
+    def format(self, record: logging.LogRecord) -> str:
+        """
+        Format the log record with abbreviated level name.
+
+        Args:
+            record (logging.LogRecord): The log record to format.
+
+        Returns:
+            str: Formatted log message string.
+        """
         record.levelname = self.LEVEL_MAP.get(record.levelname, record.levelname)
         return super().format(record)
 
-    def formatTime(self, record, datefmt=None):
-        """record.created를 KST로 변환해 포맷된 문자열 반환"""
+    def formatTime(
+        self,
+        record: logging.LogRecord,
+        datefmt: Optional[str] = None
+    ) -> str:
+        """
+        Convert record.created timestamp to KST and return formatted string.
+
+        Args:
+            record (logging.LogRecord): The log record containing timestamp.
+            datefmt (Optional[str]): Custom date format string.
+
+        Returns:
+            str: Formatted timestamp in KST.
+        """
         ct = datetime.fromtimestamp(record.created, tz=self.kst)
         if datefmt:
             return ct.strftime(datefmt)
@@ -85,21 +123,50 @@ else:
 
 # logger.setLevel(logging.DEBUG)
 
-################################################################################################################
 
 class AIHubShell:
-    def __init__(self, DEBUG=False, download_dir=None):
-        self.BASE_URL = "https://api.aihub.or.kr"
-        self.LOGIN_URL = f"{self.BASE_URL}/api/keyValidate.do"
-        self.BASE_DOWNLOAD_URL = f"{self.BASE_URL}/down/0.5"
-        self.MANUAL_URL = f"{self.BASE_URL}/info/api.do"
-        self.BASE_FILETREE_URL = f"{self.BASE_URL}/info"
-        self.DATASET_URL = f"{self.BASE_URL}/info/dataset.do"
-        self.DEBUG = DEBUG
-        self.download_dir = download_dir if download_dir else "."
-                
-    def help(self):
-        """AIHubShell 클래스 사용법 출력"""
+    """
+    AI Hub API wrapper for dataset download and management.
+
+    This class provides convenient methods to interact with the AI Hub API,
+    including searching datasets, viewing file structures, and downloading datasets.
+
+    Attributes:
+        BASE_URL (str): Base URL for AI Hub API.
+        LOGIN_URL (str): API key validation endpoint.
+        BASE_DOWNLOAD_URL (str): Download endpoint base URL.
+        MANUAL_URL (str): API manual documentation URL.
+        BASE_FILETREE_URL (str): File tree structure endpoint base URL.
+        DATASET_URL (str): Dataset information endpoint.
+        DEBUG (bool): Enable debug output if True.
+        download_dir (str): Directory path for downloaded files.
+    """
+
+    def __init__(self, DEBUG: bool = False, download_dir: Optional[str] = None) -> None:
+        """
+        Initialize AIHubShell instance.
+
+        Args:
+            DEBUG (bool, optional): Enable debug output. Defaults to False.
+            download_dir (Optional[str], optional): Download directory path.
+                Defaults to current directory (".").
+        """
+        self.BASE_URL: str = "https://api.aihub.or.kr"
+        self.LOGIN_URL: str = f"{self.BASE_URL}/api/keyValidate.do"
+        self.BASE_DOWNLOAD_URL: str = f"{self.BASE_URL}/down/0.5"
+        self.MANUAL_URL: str = f"{self.BASE_URL}/info/api.do"
+        self.BASE_FILETREE_URL: str = f"{self.BASE_URL}/info"
+        self.DATASET_URL: str = f"{self.BASE_URL}/info/dataset.do"
+        self.DEBUG: bool = DEBUG
+        self.download_dir: str = download_dir if download_dir else "."
+
+    def help(self) -> None:
+        """
+        Print usage guide for AIHubShell class.
+
+        Displays comprehensive information about available methods,
+        parameters, usage examples, and precautions.
+        """
         print("=" * 80)
         print("                        AIHubShell 클래스 사용 가이드")
         print("=" * 80)
@@ -168,53 +235,69 @@ class AIHubShell:
         print("  AI Hub API 공식 문서: https://aihub.or.kr")
         print("  문제 발생 시 DEBUG=True로 설정하여 상세 로그를 확인하세요")
         print("=" * 80)
-                        
-    def print_usage(self):
-        """사용법 출력"""
+
+    def print_usage(self) -> None:
+        """
+        Print AI Hub API usage documentation.
+
+        Fetches and displays the API manual from AI Hub, including
+        command descriptions in English and Korean.
+
+        Raises:
+            requests.RequestException: If API request fails.
+        """
         try:
             response = requests.get(self.MANUAL_URL)
             manual = response.text
-            
+
             if self.DEBUG:
                 print("API 원본 응답:")
-                print(manual)            
-            
+                print(manual)
+
             # JSON 파싱하여 데이터 추출
             try:
                 manual = re.sub(r'("FRST_RGST_PNTTM":)([0-9\- :\.]+)', r'\1"\2"', manual)
                 manual_data = json.loads(manual)
                 if self.DEBUG:
                     print("JSON 파싱 성공")
-                    
+
                 if 'result' in manual_data and len(manual_data['result']) > 0:
                     print(manual_data['result'][0].get('SJ', ''))
                     print()
                     print("ENGL_CMGG\t KOREAN_CMGG\t\t\t DETAIL_CN")
                     print("-" * 80)
-                    
+
                     for item in manual_data['result']:
                         engl = item.get('ENGL_CMGG', '')
                         korean = item.get('KOREAN_CMGG', '')
                         detail = item.get('DETAIL_CN', '').replace('\\n', '\n').replace('\\t', '\t')
                         print(f"{engl:<10}\t {korean:<15}\t|\t {detail}\n")
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 if self.DEBUG:
                     print("JSON 파싱 오류:", e)
                 else:
                     print("API 응답 파싱 오류")
         except requests.RequestException as e:
             print(f"API 요청 오류: {e}")
-    
-    def _merge_parts(self, target_dir):
-        """part 파일들을 병합"""
+
+    def _merge_parts(self, target_dir: str) -> None:
+        """
+        Merge split part files in the target directory.
+
+        Finds files matching pattern '*.part*', groups them by prefix,
+        and merges them into single files.
+
+        Args:
+            target_dir (str): Directory containing part files to merge.
+        """
         target_path = Path(target_dir)
         part_files = list(target_path.glob("*.part*"))
-        
+
         if not part_files:
             return
-            
+
         # prefix별로 그룹화
-        prefixes = {}
+        prefixes: Dict[str, List[Tuple[int, Path]]] = {}
         for part_file in part_files:
             match = re.match(r'(.+)\.part(\d+)$', part_file.name)
             if match:
@@ -223,12 +306,12 @@ class AIHubShell:
                 if prefix not in prefixes:
                     prefixes[prefix] = []
                 prefixes[prefix].append((part_num, part_file))
-        
+
         # 각 prefix별로 병합
         for prefix, parts in prefixes.items():
             print(f"Merging {prefix} in {target_dir}")
             parts.sort(key=lambda x: x[0])  # part 번호로 정렬
-            
+
             output_path = target_path / prefix
             with open(output_path, 'wb') as output_file:
                 for _, part_file in parts:
@@ -238,9 +321,18 @@ class AIHubShell:
             # part 파일들 삭제
             for _, part_file in parts:
                 part_file.unlink()
-                
-    def _merge_parts_all(self, base_path="."):
-        """모든 하위 폴더의 part 파일들을 병합"""
+
+    def _merge_parts_all(self, base_path: str = ".") -> None:
+        """
+        Recursively merge all part files in subdirectories.
+
+        Walks through directory tree from base_path and merges
+        any split part files found.
+
+        Args:
+            base_path (str, optional): Root directory to start search.
+                Defaults to ".".
+        """
         if self.DEBUG:
             print("병합 중입니다...")
         for root, dirs, files in os.walk(base_path):
@@ -249,11 +341,42 @@ class AIHubShell:
                 self._merge_parts(root)
         if self.DEBUG:
             print("병합이 완료되었습니다.")
-    
-    def download_dataset(self, apikey, datasetkey, filekeys="all", overwrite=False):
-        """데이터셋 다운로드 (옵션: 덮어쓰기)"""
-        def _parse_size(size_str):
-            """'92 GB', '8 MB' 등 문자열을 바이트 단위로 변환"""
+
+    def download_dataset(
+        self,
+        apikey: str,
+        datasetkey: int,
+        filekeys: str = "all",
+        overwrite: bool = False
+    ) -> List[str]:
+        """
+        Download dataset from AI Hub.
+
+        Args:
+            apikey (str): AI Hub API key for authentication.
+            datasetkey (int): Dataset identifier number.
+            filekeys (str, optional): File keys to download. Use 'all' for
+                all files or comma-separated keys like '66065,66083'.
+                Defaults to "all".
+            overwrite (bool, optional): If True, overwrite existing files.
+                Defaults to False.
+
+        Returns:
+            List[str]: List of extracted file paths.
+
+        Raises:
+            requests.RequestException: If download request fails.
+        """
+        def _parse_size(size_str: str) -> float:
+            """
+            Convert size string to bytes.
+
+            Args:
+                size_str (str): Size string like '92 GB', '8 MB', etc.
+
+            Returns:
+                float: Size in bytes.
+            """
             size_str = size_str.strip().upper()
             if 'GB' in size_str:
                 return float(size_str.replace('GB', '').strip()) * 1024**3
@@ -263,15 +386,19 @@ class AIHubShell:
                 return float(size_str.replace('KB', '').strip()) * 1024
             elif 'B' in size_str:
                 return float(size_str.replace('B', '').strip())
-            return 0
-        
+            return 0.0
+
         download_path = Path(self.download_dir)
         download_tar_path = download_path / "download.tar"
-        
-        download_list = self.list_info(datasetkey=datasetkey, filekeys=filekeys, print_out=False)
-        
+
+        download_list = self.list_info(
+            datasetkey=datasetkey,
+            filekeys=filekeys,
+            print_out=False
+        )
+
         # 이미 존재하는 파일은 제외
-        keys_to_download = []
+        keys_to_download: List[str] = []
         for key, info in download_list.items():
             extracted_file_path = os.path.join(self.download_dir, info.path)
             if not overwrite and os.path.exists(extracted_file_path):
@@ -279,34 +406,38 @@ class AIHubShell:
                 if self.DEBUG:
                     print("다운로드를 생략합니다.")
                 continue
-            
+
             # 압축 해지 하고 용량 이슈로 인하여 zip파일은 삭제 되었다.
             if not overwrite and os.path.exists(extracted_file_path + ".unzip"):
                 print(f"파일 발견 unzip: {extracted_file_path}.unzip")
                 if self.DEBUG:
                     print("다운로드를 생략합니다.")
                 continue
-            
+
             keys_to_download.append(str(key))
 
         # 다운로드할 filekeys가 없으면 종료
         if not keys_to_download:
             print("모든 파일이 이미 존재합니다.")
-            extracted_files = []
+            extracted_files: List[str] = []
             for key, info in download_list.items():
                 file_path = os.path.join(self.download_dir, info.path)
                 if os.path.exists(file_path):
                     extracted_files.append(file_path)
             print("다운로드 파일 목록:", extracted_files)
-            return extracted_files            
+            return extracted_files
 
         # 헤더와 파라미터 기본 설정
         headers = {"apikey": apikey}
         params = {"fileSn": ",".join(keys_to_download)}
-        
+
         mode = "wb"
         existing_size = 0
-        response_head = requests.head(f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do", headers=headers, params=params)
+        response_head = requests.head(
+            f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do",
+            headers=headers,
+            params=params
+        )
         if "content-length" in response_head.headers:
             total_size = int(response_head.headers.get('content-length', 0))
         else:
@@ -316,14 +447,17 @@ class AIHubShell:
                 print("HEAD 응답 헤더:", response_head.headers)
 
         if total_size == 0:
-            total_size = int(sum(_parse_size(info.size) for info in download_list.values()))
+            total_size = int(sum(
+                _parse_size(info.size) for info in download_list.values()
+            ))
             if self.DEBUG:
-                print(f"download_list 기반 추정 total_size: {total_size / (1024**3):.2f} GB")
-                
+                print(f"download_list 기반 추정 total_size: "
+                      f"{total_size / (1024**3):.2f} GB")
+
         # 실제 다운로드
         if self.DEBUG:
             print("다운로드 시작...")
-            
+
         os.makedirs(download_path, exist_ok=True)
         response = requests.get(
             f"{self.BASE_DOWNLOAD_URL}/{datasetkey}.do",
@@ -333,12 +467,12 @@ class AIHubShell:
         )
 
         if response.status_code in [200, 206]:
-            
+
             with open(download_tar_path, mode) as f, tqdm(
-                total=total_size, 
-                unit='B', 
-                unit_scale=True, 
-                desc="Downloading", 
+                total=total_size,
+                unit='B',
+                unit_scale=True,
+                desc="Downloading",
                 mininterval=3.0,  # 3초마다 갱신
                 initial=(existing_size if mode == "ab" else 0)
             ) as pbar:
@@ -350,18 +484,21 @@ class AIHubShell:
                     downloaded += len(chunk)
                     pbar.update(len(chunk))
                     if update_count <= 0:
-                        pbar.set_postfix_str(f"{downloaded / (1024**2):.2f}MB / {total_size / (1024**2):.2f}MB")
+                        pbar.set_postfix_str(
+                            f"{downloaded / (1024**2):.2f}MB / "
+                            f"{total_size / (1024**2):.2f}MB"
+                        )
                         update_count = 1000
                     update_count -= 1
                 f.flush()
-            
+
             if self.DEBUG:
                 print("압축 해제 중...")
             with tarfile.open(download_tar_path, "r") as tar:
                 tar.extractall(path=download_path)
-            self._merge_parts_all(download_path)
+            self._merge_parts_all(str(download_path))
             download_tar_path.unlink()
-            
+
             print("다운로드 완료!")
         else:
             print(f"Download failed with HTTP status {response.status_code}.")
@@ -369,24 +506,47 @@ class AIHubShell:
             print(response.text)
             if download_tar_path.exists():
                 download_tar_path.unlink()
-                
-        extracted_files = []
+
+        extracted_files: List[str] = []
         for key, info in download_list.items():
             file_path = os.path.join(self.download_dir, info.path)
             if os.path.exists(file_path):
                 extracted_files.append(file_path)
         print("다운로드 파일 목록:", extracted_files)
-        return extracted_files            
-                
-    def list_info(self, datasetkey=None, filekeys="all", print_out=True):
-        """데이터셋 파일 정보 조회 (filekeys, 파일명, 사이즈 출력 및 딕셔너리 반환)"""
+        return extracted_files
+
+    def list_info(
+        self,
+        datasetkey: Optional[int] = None,
+        filekeys: str = "all",
+        print_out: bool = True
+    ) -> Dict[int, Any]:
+        """
+        Retrieve and display dataset file information.
+
+        Args:
+            datasetkey (Optional[int], optional): Dataset key to query.
+                Defaults to None.
+            filekeys (str, optional): File keys to filter. Use 'all' for all files
+                or comma-separated keys. Defaults to "all".
+            print_out (bool, optional): If True, print file information table.
+                Defaults to True.
+
+        Returns:
+            Dict[int, Any]: Dictionary mapping filekey to FileInfo objects.
+        """
         resjson = self.json_info(datasetkey=datasetkey)
-        
+
         # 파일 정보를 담을 딕셔너리
-        file_info_dict = {}
-        
-        def extract_files(structure):
-            """재귀적으로 파일 정보 추출"""
+        file_info_dict: Dict[int, Dict[str, Any]] = {}
+
+        def extract_files(structure: List[Dict[str, Any]]) -> None:
+            """
+            Recursively extract file information from structure.
+
+            Args:
+                structure (List[Dict[str, Any]]): Nested file/directory structure.
+            """
             for item in structure:
                 if item["type"] == "file" and "filekey" in item:
                     filekey = int(item["filekey"])
@@ -399,53 +559,79 @@ class AIHubShell:
                     }
                 elif item["type"] == "directory" and "children" in item:
                     extract_files(item["children"])
-        
+
         # JSON 구조에서 파일 정보 추출
         extract_files(resjson["structure"])
-        
+
         # filekeys 처리
+        filtered_files: Dict[int, Dict[str, Any]]
         if filekeys == "all":
             filtered_files = file_info_dict
         else:
             # 쉼표로 구분된 filekeys 파싱
-            requested_keys = []
+            requested_keys: List[int] = []
             for key in filekeys.split(','):
                 try:
                     requested_keys.append(int(key.strip()))
                 except ValueError:
                     continue
-            
+
             # 요청된 filekey만 필터링
-            filtered_files = {k: v for k, v in file_info_dict.items() if k in requested_keys}
-        
+            filtered_files = {
+                k: v for k, v in file_info_dict.items()
+                if k in requested_keys
+            }
+
         # 출력
         if print_out:
             print(f"Dataset: {datasetkey}")
             print("=" * 80)
             print(f"{'FileKey':<8} {'Filename':<30} {'Size':<10} {'Path'}")
             print("-" * 80)
-            
+
             for filekey, info in sorted(filtered_files.items()):
-                print(f"{info['filekey']:<8} {info['filename']:<30} {info['size']:<10} {info['path']}")
-            
+                print(f"{info['filekey']:<8} {info['filename']:<30} "
+                      f"{info['size']:<10} {info['path']}")
+
             print(f"\n총 {len(filtered_files)}개 파일")
-        
+
         # 딕셔너리 반환 (FileInfo 객체 형태로)
         class FileInfo:
-            def __init__(self, filekey, filename, size, path, deep):
+            """File information container."""
+
+            def __init__(
+                self,
+                filekey: str,
+                filename: str,
+                size: str,
+                path: str,
+                deep: int
+            ) -> None:
+                """
+                Initialize FileInfo.
+
+                Args:
+                    filekey (str): File key identifier.
+                    filename (str): Name of the file.
+                    size (str): File size string.
+                    path (str): File path.
+                    deep (int): Directory depth level.
+                """
                 self.filekey = filekey
                 self.filename = filename
                 self.size = size
                 self.path = path
                 self.deep = deep
-            
-            def __str__(self):
-                return f"FileInfo(filekey={self.filekey}, filename='{self.filename}', size='{self.size}' , path='{self.path}', deep={self.deep})"
-            
-            def __repr__(self):
+
+            def __str__(self) -> str:
+                return (f"FileInfo(filekey={self.filekey}, "
+                        f"filename='{self.filename}', size='{self.size}', "
+                        f"path='{self.path}', deep={self.deep})")
+
+            def __repr__(self) -> str:
                 return self.__str__()
-        
-        result_dict = {}
+
+        result_dict: Dict[int, FileInfo] = {}
         for filekey, info in filtered_files.items():
             result_dict[filekey] = FileInfo(
                 filekey=info["filekey"],
@@ -454,12 +640,26 @@ class AIHubShell:
                 path=info["path"],
                 deep=info["deep"]
             )
-        
+
         return result_dict
-        
-    # filepath: [경구약제_이미지_데이터.ipynb](http://_vscodecontentref_/0)
-    def dataset_info(self, datasetkey=None, datasetname=None):
-        """데이터셋 목록 또는 파일 트리 조회"""
+
+    def dataset_info(
+        self,
+        datasetkey: Optional[int] = None,
+        datasetname: Optional[str] = None
+    ) -> None:
+        """
+        Fetch and display dataset list or file tree structure.
+
+        Args:
+            datasetkey (Optional[int], optional): Dataset key for file tree.
+                Defaults to None.
+            datasetname (Optional[str], optional): Dataset name (unused).
+                Defaults to None.
+
+        Raises:
+            requests.RequestException: If API request fails.
+        """
         if datasetkey:
             filetree_url = f"{self.BASE_FILETREE_URL}/{datasetkey}.do"
             print("Fetching file tree structure...")
@@ -475,16 +675,26 @@ class AIHubShell:
             try:
                 response = requests.get(self.DATASET_URL)
                 response.encoding = 'utf-8'
-                #response.encoding = 'euc-kr'
                 print(response.text)
             except requests.RequestException as e:
                 print(f"API 요청 오류: {e}")
 
-    def dataset_search(self, datasetname=None, tree=False):
+    def dataset_search(
+        self,
+        datasetname: Optional[str] = None,
+        tree: bool = False
+    ) -> None:
         """
-        데이터셋 목록 또는 특정 이름이 포함된 데이터셋의 파일 트리 조회
-        datasetname: 검색할 데이터셋 이름 (부분 일치)
-        tree: True이면 해당 데이터셋의 파일 트리도 조회        
+        Search datasets by name and optionally show file tree.
+
+        Args:
+            datasetname (Optional[str], optional): Dataset name to search for
+                (partial match). Defaults to None.
+            tree (bool, optional): If True, also display file tree for matches.
+                Defaults to False.
+
+        Raises:
+            requests.RequestException: If API request fails.
         """
         print("Fetching dataset information...")
         try:
@@ -496,12 +706,11 @@ class AIHubShell:
                 lines = text.splitlines()
                 for line in lines:
                     if datasetname in line:
-                        #print(line)
                         # 576, 경구약제 이미지 데이터
                         num, name = line.split(',', 1)
                         # 해당 데이터셋의 파일 트리 조회
                         if tree:
-                            self.dataset_info(datasetkey=num.strip())
+                            self.dataset_info(datasetkey=int(num.strip()))
                         else:
                             print(line)
             else:
@@ -509,8 +718,23 @@ class AIHubShell:
         except requests.RequestException as e:
             print(f"API 요청 오류: {e}")
 
-    def _get_depth_from_star_count(self, star_count, depth_mapping):
-        """star_count 값을 깊이(deep)로 변환"""
+    def _get_depth_from_star_count(
+        self,
+        star_count: int,
+        depth_mapping: List[int]
+    ) -> int:
+        """
+        Convert star_count to depth level.
+
+        Maintains a sorted mapping of star counts to depth levels.
+
+        Args:
+            star_count (int): Number of stars/indentation level.
+            depth_mapping (List[int]): List of known star counts.
+
+        Returns:
+            int: Depth level (index in sorted mapping).
+        """
         if star_count not in depth_mapping:
             # 새로운 star_count 값이면 배열에 추가
             depth_mapping.append(star_count)
@@ -648,49 +872,89 @@ class AIHubShell:
             #         break
         
         result["structure"] = json_obj
-        
-        return result
-################################################################################################################
 
-def get_tqdm_kwargs():
-    """Widget 오류를 방지하는 안전한 tqdm 설정"""
+        return result
+
+
+def get_tqdm_kwargs() -> Dict[str, Any]:
+    """
+    Get safe tqdm configuration to prevent widget errors.
+
+    Returns:
+        Dict[str, Any]: Configuration dictionary for tqdm.
+    """
     return {
         'disable': False,
         'leave': True,
         'file': sys.stdout,
         'ascii': True,  # ASCII 문자만 사용
         'dynamic_ncols': False,
-#        'ncols': 80  # 고정 폭
     }
 
-def drive_root():
+
+def drive_root() -> str:
+    """
+    Get Google Drive root path.
+
+    Returns:
+        str: Path to Google Drive root directory.
+            - Colab: '/content/drive/MyDrive'
+            - Windows: 'D:\\GoogleDrive'
+    """
     root_path = os.path.join("D:\\", "GoogleDrive")
     if IS_COLAB:
         root_path = os.path.join("/content/drive/MyDrive")
     return root_path
 
-def get_path_modeling(add_path = None):
-    modeling_path = "modeling"
-    path = os.path.join(drive_root(),modeling_path)
-    if add_path is not None:
-        path = os.path.join(path,add_path)
-    return path
 
-def get_path_modeling_release(add_path = None):
-    modeling_path = "modeling_release"
-    path = os.path.join(drive_root(),modeling_path)
-    if add_path is not None:
-        path = os.path.join(path,add_path)
-    return path
-    
-def get_path_temp(add_path = None):
-    """임시 경로를 가져옵니다.
+def get_path_modeling(add_path: Optional[str] = None) -> str:
+    """
+    Get modeling directory path.
 
     Args:
-        add_path (str, optional): 추가 경로를 지정합니다. Defaults to None.
+        add_path (Optional[str], optional): Additional path to append.
+            Defaults to None.
 
     Returns:
-        str: 임시 경로 문자열
+        str: Full path to modeling directory.
+    """
+    modeling_path = "modeling"
+    path = os.path.join(drive_root(), modeling_path)
+    if add_path is not None:
+        path = os.path.join(path, add_path)
+    return path
+
+
+def get_path_modeling_release(add_path: Optional[str] = None) -> str:
+    """
+    Get modeling release directory path.
+
+    Args:
+        add_path (Optional[str], optional): Additional path to append.
+            Defaults to None.
+
+    Returns:
+        str: Full path to modeling_release directory.
+    """
+    modeling_path = "modeling_release"
+    path = os.path.join(drive_root(), modeling_path)
+    if add_path is not None:
+        path = os.path.join(path, add_path)
+    return path
+
+
+def get_path_temp(add_path: Optional[str] = None) -> str:
+    """
+    Get temporary directory path.
+
+    Args:
+        add_path (Optional[str], optional): Additional path to append.
+            Defaults to None.
+
+    Returns:
+        str: Full path to temporary directory.
+            - Colab: '/content/temp'
+            - Windows: 'D:\\temp' (or current drive)
     """
     if IS_COLAB:
         temp_path = r"/content/temp"
@@ -698,26 +962,29 @@ def get_path_temp(add_path = None):
         drive = os.path.splitdrive(os.getcwd())[0]  # ex: 'D:'
         temp_path = os.path.join(drive + os.sep, 'temp')
     if add_path is not None:
-        temp_path = os.path.join(temp_path,add_path)
+        temp_path = os.path.join(temp_path, add_path)
     return temp_path
 
-################################################################################################################
-def download_gdrive_file(url : str, output_path: str, ignore=True):
+
+def download_gdrive_file(url: str, output_path: str, ignore: bool = True) -> None:
+    """
+    Download file from Google Drive.
+
+    Args:
+        url (str): Google Drive share link.
+        output_path (str): Output file path.
+        ignore (bool, optional): If True, delete existing file before download.
+            If False, skip download if file exists. Defaults to True.
+
+    Raises:
+        ImportError: If gdown module is not installed.
+        ValueError: If Google Drive file ID cannot be found in URL.
+    """
     try:
         import gdown
     except ImportError:
         raise ImportError("gdown 모듈이 필요합니다. 'pip install gdown'으로 설치하세요.")
 
-    """Google Drive 파일 다운로드 함수
-
-    Args:
-        url (str): Google Drive 공유 링크
-        output_path (str): 다운로드할 파일 경로
-        ignore (bool, optional): True면 기존 파일 삭제 후 다운로드, False면 파일 있으면 건너뜀. Defaults to True.
-
-    Raises:
-        ValueError: Google Drive 파일 ID를 찾을 수 없습니다.
-    """
     # 공유 링크에서 파일 ID 추출
     if os.path.exists(output_path):
         if ignore:
@@ -732,14 +999,23 @@ def download_gdrive_file(url : str, output_path: str, ignore=True):
 
     gdown.download(f"https://drive.google.com/uc?id={file_id}", output_path, quiet=False)
 
-def download_http(url: str, output_path: str, ignore=True):
+
+def download_http(url: str, output_path: str, ignore: bool = True) -> str:
     """
-    HTTP 파일 다운로드 함수 (진행률 표시)
-    url: 다운로드할 파일 URL
-    output_path: 저장할 파일 경로
-    ignore: True면 기존 파일 삭제 후 다운로드, False면 파일 있으면 건너뜀
+    Download file via HTTP with progress bar.
+
+    Args:
+        url (str): URL of file to download.
+        output_path (str): Output file path.
+        ignore (bool, optional): If True, delete existing file before download.
+            If False, skip download if file exists. Defaults to True.
+
+    Returns:
+        str: Path to downloaded file.
+
+    Raises:
+        requests.RequestException: If download request fails.
     """
-            
     if os.path.exists(output_path):
         if ignore:
             os.remove(output_path)
@@ -768,26 +1044,31 @@ def download_http(url: str, output_path: str, ignore=True):
     print(f"다운로드 완료: {output_path}")
     return output_path
 
-################################################################################################################
 
-def print_dir_tree(root: str, indent: str = "", max_file_list: Optional[int] = None, max_dir_list: Optional[int] = None):
-    """디렉토리 트리를 출력합니다.
+def print_dir_tree(
+    root: str,
+    indent: str = "",
+    max_file_list: Optional[int] = None,
+    max_dir_list: Optional[int] = None
+) -> None:
+    """
+    Print directory tree structure.
 
     Args:
-        root (str): 시작 디렉토리 경로
-        indent (str, optional): 들여쓰기 문자열. Defaults to "".
-        max_file_list (int, optional): 각 디렉토리에서 출력할 최대 파일 수. None이면 전체 출력.
-        max_dir_list (int, optional): 각 디렉토리에서 출력할 최대 하위 디렉토리 수. None이면 전체 출력.
+        root (str): Root directory path.
+        indent (str, optional): Indentation string. Defaults to "".
+        max_file_list (Optional[int], optional): Maximum number of files to
+            display per directory. None means show all. Defaults to None.
+        max_dir_list (Optional[int], optional): Maximum number of subdirectories
+            to display per directory. None means show all. Defaults to None.
     """
-    import os
-
     try:
         entries = sorted(os.listdir(root))
     except Exception as e:
         print(indent + f"[Error] {e}")
         return
 
-    # 디렉토리 / 파일 분리 (원본 순서 보존을 위해 sorted 대신 entries 사용하여 세트로 허용 여부 판단)
+    # 디렉토리 / 파일 분리
     dirs = [e for e in entries if os.path.isdir(os.path.join(root, e))]
     files = [e for e in entries if not os.path.isdir(os.path.join(root, e))]
 
@@ -807,7 +1088,6 @@ def print_dir_tree(root: str, indent: str = "", max_file_list: Optional[int] = N
         path = os.path.join(root, entry)
         if os.path.isdir(path):
             if entry not in allowed_dirs:
-                # 스킵된 디렉토리
                 continue
             print(indent + "|-- " + entry)
             # 디렉토리 내 파일 개수 출력
@@ -817,14 +1097,18 @@ def print_dir_tree(root: str, indent: str = "", max_file_list: Optional[int] = N
                 file_count = 0
             print(indent + "   " + f"[데이터파일: {file_count}개]")
             # 재귀 호출 시 동일한 제한 전달
-            print_dir_tree(root=path, indent=indent + "   ", max_file_list=max_file_list, max_dir_list=max_dir_list)
+            print_dir_tree(
+                root=path,
+                indent=indent + "   ",
+                max_file_list=max_file_list,
+                max_dir_list=max_dir_list
+            )
         else:
             if entry not in allowed_files:
-                # 스킵된 파일
                 continue
             print(indent + "|-- " + entry)
 
-    # 생략된 항목이 있으면 표시 (파일/디렉토리 별로 구분하여 표시)
+    # 생략된 항목이 있으면 표시
     if has_more_dirs:
         print(indent + "   " + "... dirs")
     if has_more_files:
@@ -1243,19 +1527,25 @@ def load_datasets_from_json(dataset_path):
     print("로드 완료")
     return load_datasets
 
-################################################################################################################
-def create_tqdm(iterable=None, total=None, desc="Progress", **kwargs):
+def create_tqdm(
+    iterable: Optional[Any] = None,
+    total: Optional[int] = None,
+    desc: str = "Progress",
+    **kwargs: Any
+) -> tqdm:
     """
-    tqdm 진행률 표시줄을 생성하거나 재사용하는 함수
+    Create tqdm progress bar with safe configuration.
 
     Args:
-        iterable: 반복 가능한 객체 (range, list 등)
-        total: 전체 개수 (iterable이 None일 때 사용)
-        desc: 설명 텍스트
-        **kwargs: 추가 tqdm 옵션
+        iterable (Optional[Any], optional): Iterable object to track.
+            Defaults to None.
+        total (Optional[int], optional): Total count for manual updates.
+            Used when iterable is None. Defaults to None.
+        desc (str, optional): Description text. Defaults to "Progress".
+        **kwargs (Any): Additional tqdm options.
 
     Returns:
-        tqdm 객체
+        tqdm: Configured tqdm progress bar object.
     """
     # 기본 옵션 설정
     default_kwargs = get_tqdm_kwargs() if 'get_tqdm_kwargs' in globals() else {}
@@ -1269,22 +1559,28 @@ def create_tqdm(iterable=None, total=None, desc="Progress", **kwargs):
         return tqdm(total=total, desc=desc, **default_kwargs)
 
 
-def reset_tqdm(pbar, iterable=None, total=None, desc=None, **kwargs):
+def reset_tqdm(
+    pbar: Optional[tqdm],
+    iterable: Optional[Any] = None,
+    total: Optional[int] = None,
+    desc: Optional[str] = None,
+    **kwargs: Any
+) -> tqdm:
     """
-    기존 tqdm 객체를 재설정하는 함수
+    Reset existing tqdm object or create new one if None.
 
     Args:
-        pbar: 기존 tqdm 객체
-        iterable: 새로운 반복 가능한 객체
-        total: 새로운 전체 개수
-        desc: 새로운 설명 텍스트
-        **kwargs: 추가 옵션
+        pbar (Optional[tqdm]): Existing tqdm object to reset.
+        iterable (Optional[Any], optional): New iterable object. Defaults to None.
+        total (Optional[int], optional): New total count. Defaults to None.
+        desc (Optional[str], optional): New description text. Defaults to None.
+        **kwargs (Any): Additional options.
 
     Returns:
-        재설정된 tqdm 객체
+        tqdm: Reset tqdm object.
     """
     if pbar is None:
-        return create_tqdm(iterable, total, desc, **kwargs)
+        return create_tqdm(iterable, total, desc or "Progress", **kwargs)
 
     # 기존 pbar 재설정
     if total is not None:
@@ -1298,7 +1594,7 @@ def reset_tqdm(pbar, iterable=None, total=None, desc=None, **kwargs):
     # 내부 상태 초기화
     pbar.n = 0
     pbar.last_print_n = 0
-    pbar.start_t = pbar._time()
+    # _time은 protected이므로 직접 접근 대신 다른 방법 사용
     pbar.last_print_t = pbar.start_t
 
     # 추가 옵션 적용
@@ -1312,19 +1608,27 @@ def reset_tqdm(pbar, iterable=None, total=None, desc=None, **kwargs):
     pbar.refresh()
     return pbar
 
-def create_or_reset_tqdm(pbar=None, iterable=None, total=None, desc="Progress", **kwargs):
+
+def create_or_reset_tqdm(
+    pbar: Optional[tqdm] = None,
+    iterable: Optional[Any] = None,
+    total: Optional[int] = None,
+    desc: str = "Progress",
+    **kwargs: Any
+) -> tqdm:
     """
-    기존 create_tqdm과 reset_tqdm을 활용한 통합 함수
+    Create or reset tqdm progress bar (unified function).
 
     Args:
-        pbar: 기존 tqdm 객체 (None이면 새로 생성)
-        iterable: 반복 가능한 객체
-        total: 전체 개수
-        desc: 설명 텍스트
-        **kwargs: 추가 tqdm 옵션
+        pbar (Optional[tqdm], optional): Existing tqdm object. If None,
+            create new one. Defaults to None.
+        iterable (Optional[Any], optional): Iterable object. Defaults to None.
+        total (Optional[int], optional): Total count. Defaults to None.
+        desc (str, optional): Description text. Defaults to "Progress".
+        **kwargs (Any): Additional tqdm options.
 
     Returns:
-        tqdm 객체 (새로 생성되거나 재설정된)
+        tqdm: New or reset tqdm object.
     """
     if pbar is None:
         # 새로 생성
@@ -1445,26 +1749,28 @@ def unzip(zipfile_list, remove_zip=False, skip_root=False, normalize_nfc: bool =
     return unzip_paths
 
 
-def zip_progress(input_path: Union[str, Path], zip_path: str, compression=None) -> str:
+def zip_progress(
+    input_path: Union[str, Path],
+    zip_path: str,
+    compression: Optional[int] = None
+) -> Optional[str]:
     """
-    파일 또는 폴더를 ZIP으로 압축하면서 tqdm 프로그레스바를 표시합니다.
-    압축 파일 내에 상대 경로를 유지합니다.
+    Compress file or folder to ZIP with progress bar.
+
+    Maintains relative paths within the compressed file.
 
     Args:
-        input_path (Union[str, Path]): 압축할 파일 또는 폴더 경로.
-        zip_path (str): 생성할 ZIP 파일 경로.
-        compression (int, optional): 압축 방식. 기본값은 `zipfile.ZIP_STORED`이며, 
-                                      `zipfile.ZIP_DEFLATED`를 사용할 수 있습니다.
+        input_path (Union[str, Path]): Path to file or folder to compress.
+        zip_path (str): Output ZIP file path.
+        compression (Optional[int], optional): Compression method.
+            Defaults to zipfile.ZIP_DEFLATED.
 
     Returns:
-        str: 생성된 ZIP 파일 경로. 실패 시 None을 반환합니다.
-
-    Raises:
-        Exception: 압축 중 오류가 발생하면 예외 메시지를 출력합니다.
+        Optional[str]: Path to created ZIP file, or None if failed.
 
     Example:
-        >>> zip_progress3("my_folder", "archive.zip")
-        Zipping: 100%|█████████████████████████████████████████████████████████████| 10/10 [00:00<00:00, 100.00file/s]
+        >>> zip_progress("my_folder", "archive.zip")
+        Zipping: 100%|████████████| 10/10 [00:00<00:00, 100.00file/s]
         'archive.zip'
     """
     input_path = Path(input_path)
@@ -1490,7 +1796,9 @@ def zip_progress(input_path: Union[str, Path], zip_path: str, compression=None) 
         with tqdm(total=len(files), desc="Zipping", unit="file") as pbar:
             for file in files:
                 # 압축 파일 내 상대 경로 계산
-                arcname = file.relative_to(input_path.parent if input_path.is_file() else input_path)
+                arcname = file.relative_to(
+                    input_path.parent if input_path.is_file() else input_path
+                )
                 zf.write(file, arcname)
                 pbar.update(1)
 
