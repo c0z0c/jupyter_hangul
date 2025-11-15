@@ -64,6 +64,7 @@ import gzip
 import logging
 import shutil
 import pickle
+import platform
 import hashlib
 import warnings
 import subprocess
@@ -875,7 +876,8 @@ def setup() -> None:
     try:
         
         if not _in_colab():
-            os.system('chcp 65001')
+            if platform.system() == "Windows":
+                    os.system('chcp 65001')
             os.environ['PYTHONIOENCODING'] = 'utf-8'
 
         # 폰트 다운로드/설치 및 로딩 (출력 최소화)
