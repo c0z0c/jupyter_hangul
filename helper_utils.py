@@ -32,8 +32,14 @@ try:
     # Colab 환경 여부 확인
     import google.colab
     IS_COLAB: bool = True
+    IS_JUPYTER: bool = False
+    IS_WINDOWS: bool = False
 except ImportError:
     IS_COLAB: bool = False
+    # Windows 환경 확인
+    IS_WINDOWS: bool = (os.name == "nt")
+    # Linux/macOS 환경이면서 Colab이 아니면 Jupyter로 간주
+    IS_JUPYTER: bool = (os.name == "posix")
 
 
 __version__: str = "2.6.0"
@@ -900,11 +906,16 @@ def drive_root() -> str:
         str: Path to Google Drive root directory.
             - Colab: '/content/drive/MyDrive'
             - Windows: 'D:\\GoogleDrive'
+            - Linux/macOS (Jupyter): '/home/<USER>'
     """
-    root_path = os.path.join("D:\\", "GoogleDrive")
     if IS_COLAB:
-        root_path = os.path.join("/content/drive/MyDrive")
-    return root_path
+        return "/content/drive/MyDrive"
+
+    if IS_WINDOWS:
+        return os.path.join("D:\\", "GoogleDrive")
+
+    # Linux/macOS (Jupyter): 사용자 홈 디렉토리
+    return str(Path.home())
 
 
 def get_path_modeling(add_path: Optional[str] = None) -> str:
@@ -954,13 +965,18 @@ def get_path_temp(add_path: Optional[str] = None) -> str:
     Returns:
         str: Full path to temporary directory.
             - Colab: '/content/temp'
-            - Windows: 'D:\\temp' (or current drive)
+            - Windows: '<current_drive>:\\temp'
+            - Linux/macOS (Jupyter): '/tmp'
     """
     if IS_COLAB:
-        temp_path = r"/content/temp"
-    else:
+        temp_path = "/content/temp"
+    elif IS_WINDOWS:
         drive = os.path.splitdrive(os.getcwd())[0]  # ex: 'D:'
         temp_path = os.path.join(drive + os.sep, 'temp')
+    else:
+        # Linux/macOS: 시스템 temp 디렉토리 사용
+        temp_path = "/tmp"
+    
     if add_path is not None:
         temp_path = os.path.join(temp_path, add_path)
     return temp_path

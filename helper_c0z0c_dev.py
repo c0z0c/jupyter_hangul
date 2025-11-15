@@ -92,8 +92,14 @@ try:
     import google.colab
     from google.colab import drive
     IS_COLAB = True
+    IS_JUPYTER = False
+    IS_WINDOWS = False
 except ImportError:
     IS_COLAB = False
+    # Windows 환경 확인
+    IS_WINDOWS = (os.name == "nt")
+    # Linux/macOS 환경이면서 Colab이 아니면 Jupyter로 간주
+    IS_JUPYTER = (os.name == "posix")
 
 ENABLE_LOGGER = os.environ.get("ENABLE_LOGGER", "True").lower() in ("true", "1", "yes")
 logger = logging.getLogger("helper_c0z0c_dev")
@@ -876,8 +882,8 @@ def setup() -> None:
     try:
         
         if not _in_colab():
-            if platform.system() == "Windows":
-                    os.system('chcp 65001')
+            if IS_WINDOWS:
+                os.system('chcp 65001')
             os.environ['PYTHONIOENCODING'] = 'utf-8'
 
         # 폰트 다운로드/설치 및 로딩 (출력 최소화)
